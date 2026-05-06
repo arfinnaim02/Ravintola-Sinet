@@ -1,18 +1,50 @@
-import { prisma } from "../../../lib/prisma";
+"use client";
 
-function formatDate(value: Date) {
+import { useEffect, useState } from "react";
+
+type ContactMessage = {
+  id: string;
+  name: string;
+  email: string;
+  message: string;
+  createdAt: string;
+};
+
+function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(value);
+  }).format(new Date(value));
 }
 
-export default async function AdminMessagesPage() {
-  const messages = await prisma.contactMessage.findMany({
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+export default function AdminMessagesPage() {
+  const [messages, setMessages] = useState<ContactMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadMessages() {
+      try {
+        const response = await fetch("/api/admin/messages", {
+          cache: "no-store",
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || "Failed to load contact messages.");
+        }
+
+        setMessages(data.messages);
+      } catch (err: any) {
+        setError(err?.message || "Failed to load contact messages.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadMessages();
+  }, []);
 
   return (
     <main>
@@ -34,18 +66,22 @@ export default async function AdminMessagesPage() {
 
       <section className="mx-auto max-w-7xl px-5 py-8">
         <div className="rounded-3xl border border-[#e0d3bf] bg-white p-6 shadow-xl shadow-[#3b1f18]/8">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="font-display text-2xl font-black text-[#3b1f18]">
-                Messages
-              </h2>
-              <p className="mt-1 text-sm text-[#7b6255]">
-                {messages.length} message{messages.length === 1 ? "" : "s"} found
-              </p>
-            </div>
+          <div>
+            <h2 className="font-display text-2xl font-black text-[#3b1f18]">
+              Messages
+            </h2>
+            <p className="mt-1 text-sm text-[#7b6255]">
+              {messages.length} message{messages.length === 1 ? "" : "s"} found
+            </p>
           </div>
 
-          {messages.length === 0 ? (
+          {loading ? (
+            <p className="mt-6 text-sm text-[#7b6255]">Loading messages...</p>
+          ) : error ? (
+            <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-sm font-bold text-red-700">
+              {error}
+            </div>
+          ) : messages.length === 0 ? (
             <div className="mt-6 rounded-2xl border border-dashed border-[#d8c9ac] bg-[#fffaf3] p-10 text-center text-sm text-[#7b6255]">
               No contact messages yet.
             </div>
