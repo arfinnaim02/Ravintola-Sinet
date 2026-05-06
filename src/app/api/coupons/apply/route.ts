@@ -1,8 +1,13 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
+
+async function getPrisma() {
+  const { prisma } = await import("../../../../lib/prisma");
+  return prisma;
+}
 
 function normalizeCode(value: string) {
   return value.trim().toUpperCase().replace(/\s+/g, "");
@@ -26,6 +31,8 @@ function calculateDiscount(coupon: any, subtotal: number, deliveryFee: number) {
 
 export async function POST(request: Request) {
   try {
+    const prisma = await getPrisma();
+
     const body = await request.json();
 
     const code = normalizeCode(String(body.code || ""));

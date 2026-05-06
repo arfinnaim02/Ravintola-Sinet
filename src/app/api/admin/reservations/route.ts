@@ -1,13 +1,20 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
+
+async function getPrisma() {
+  const { prisma } = await import("../../../../lib/prisma");
+  return prisma;
+}
 
 const allowedStatuses = ["pending", "accepted", "completed", "cancelled"];
 
 export async function GET() {
   try {
+    const prisma = await getPrisma();
+
     const reservations = await prisma.reservation.findMany({
       orderBy: {
         startDatetime: "desc",
@@ -39,6 +46,7 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    const prisma = await getPrisma();
     const body = await request.json();
 
     const id = String(body.id || "");
@@ -96,6 +104,7 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const prisma = await getPrisma();
     const body = await request.json();
 
     const id = String(body.id || "");

@@ -1,8 +1,13 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
+
+async function getPrisma() {
+  const { prisma } = await import("../../../../lib/prisma");
+  return prisma;
+}
 
 function calculateFee({
   distanceKm,
@@ -27,6 +32,8 @@ function calculateFee({
 
 export async function POST(request: Request) {
   try {
+    const prisma = await getPrisma();
+
     const body = await request.json();
 
     const distanceKm = Number(body.distanceKm || 0);
@@ -45,21 +52,21 @@ export async function POST(request: Request) {
         promoTitle: "",
       });
     }
-    
+
     if (distanceKm > Number(pricing.maxDistanceKm || 0)) {
-  return NextResponse.json(
-    {
-      success: false,
-      message: `This address is outside our delivery area. Maximum delivery distance is ${Number(
-        pricing.maxDistanceKm
-      ).toFixed(1)} km.`,
-      distanceKm,
-      maxDistanceKm: Number(pricing.maxDistanceKm),
-      outOfDeliveryArea: true,
-    },
-    { status: 400 }
-  );
-}
+      return NextResponse.json(
+        {
+          success: false,
+          message: `This address is outside our delivery area. Maximum delivery distance is ${Number(
+            pricing.maxDistanceKm
+          ).toFixed(1)} km.`,
+          distanceKm,
+          maxDistanceKm: Number(pricing.maxDistanceKm),
+          outOfDeliveryArea: true,
+        },
+        { status: 400 }
+      );
+    }
 
     let deliveryFee = calculateFee({
       distanceKm,

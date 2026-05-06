@@ -1,10 +1,18 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { prisma } from "../../../../lib/prisma";
-import { createCustomerToken, setCustomerAuthCookie } from "../../../../lib/auth";
+
+async function getPrisma() {
+  const { prisma } = await import("../../../../lib/prisma");
+  return prisma;
+}
+
+async function getAuth() {
+  return await import("../../../../lib/auth");
+}
 
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
@@ -12,6 +20,9 @@ function normalizeEmail(value: string) {
 
 export async function POST(request: Request) {
   try {
+    const prisma = await getPrisma();
+    const { createCustomerToken, setCustomerAuthCookie } = await getAuth();
+
     const body = await request.json();
 
     const name = String(body.name || "").trim();

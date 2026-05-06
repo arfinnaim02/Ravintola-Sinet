@@ -1,10 +1,17 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
+
+async function getPrisma() {
+  const { prisma } = await import("../../../../lib/prisma");
+  return prisma;
+}
 
 async function getOrCreatePricing() {
+  const prisma = await getPrisma();
+
   const existing = await prisma.deliveryPricing.findFirst();
 
   if (existing) return existing;
@@ -23,6 +30,7 @@ async function getOrCreatePricing() {
 export async function GET() {
   try {
     const pricing = await getOrCreatePricing();
+
     return NextResponse.json({ success: true, pricing });
   } catch (error: any) {
     return NextResponse.json(
@@ -34,6 +42,7 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    const prisma = await getPrisma();
     const body = await request.json();
     const current = await getOrCreatePricing();
 

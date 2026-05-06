@@ -1,12 +1,23 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
-import { ensureDefaultLoyaltyProgram } from "../../../../lib/loyalty";
+
+async function getPrisma() {
+  const { prisma } = await import("../../../../lib/prisma");
+  return prisma;
+}
+
+async function getLoyalty() {
+  return await import("../../../../lib/loyalty");
+}
 
 export async function GET() {
   try {
+    const prisma = await getPrisma();
+    const { ensureDefaultLoyaltyProgram } = await getLoyalty();
+
     const program = await ensureDefaultLoyaltyProgram();
 
     const rewards = await prisma.loyaltyReward.findMany({
@@ -41,6 +52,9 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    const prisma = await getPrisma();
+    const { ensureDefaultLoyaltyProgram } = await getLoyalty();
+
     const body = await request.json();
     const existing = await ensureDefaultLoyaltyProgram();
 

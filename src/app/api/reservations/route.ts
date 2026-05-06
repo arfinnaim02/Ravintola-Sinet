@@ -1,8 +1,13 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../lib/prisma";
+
+async function getPrisma() {
+  const { prisma } = await import("../../../lib/prisma");
+  return prisma;
+}
 
 type ReservationAddon = {
   groupName: string;
@@ -20,6 +25,8 @@ type ReservationMenuItem = {
 
 export async function POST(request: Request) {
   try {
+    const prisma = await getPrisma();
+
     const body = await request.json();
 
     const date = String(body.date || "");
@@ -31,6 +38,7 @@ export async function POST(request: Request) {
     const babySeats = Number(body.babySeats || 0);
     const preferredTable = body.preferredTable ? Number(body.preferredTable) : null;
     const notes = String(body.notes || "");
+
     const selectedItems = Array.isArray(body.items)
       ? (body.items as ReservationMenuItem[])
       : [];

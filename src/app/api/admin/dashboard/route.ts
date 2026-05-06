@@ -1,8 +1,13 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+
+async function getPrisma() {
+  const { prisma } = await import("@/lib/prisma");
+  return prisma;
+}
 
 /**
  * IMPORTANT:
@@ -23,10 +28,18 @@ function getDateRange(start?: string | null, end?: string | null) {
   const fallbackEnd = new Date(today);
   fallbackEnd.setHours(23, 59, 59, 999);
 
-  const startDate = start ? new Date(`${start}T00:00:00`) : fallbackStart;
-  const endDate = end ? new Date(`${end}T23:59:59`) : fallbackEnd;
+  const startDate = start
+    ? new Date(`${start}T00:00:00`)
+    : fallbackStart;
 
-  return { startDate, endDate };
+  const endDate = end
+    ? new Date(`${end}T23:59:59`)
+    : fallbackEnd;
+
+  return {
+    startDate,
+    endDate,
+  };
 }
 
 function isCancelled(status: string) {
@@ -39,8 +52,11 @@ function money(value: number) {
 
 export async function GET(request: NextRequest) {
   try {
+    const prisma = await getPrisma();
+
     const start = request.nextUrl.searchParams.get("start");
     const end = request.nextUrl.searchParams.get("end");
+
     const { startDate, endDate } = getDateRange(start, end);
 
     const orderWhere = {
@@ -63,8 +79,11 @@ export async function GET(request: NextRequest) {
       activeCoupons,
     ] = await Promise.all([
       prisma.category.count(),
+
       prisma.menuItem.count(),
+
       prisma.addonGroup.count(),
+
       prisma.heroBanner.count(),
 
       prisma.deliveryOrder.findMany({
@@ -121,7 +140,9 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    const validOrders = orders.filter((order) => !isCancelled(order.status));
+    const validOrders = orders.filter(
+      (order) => !isCancelled(order.status)
+    );
 
     const totalSales = validOrders.reduce(
       (sum, order) => sum + Number(order.total || 0),
@@ -142,24 +163,36 @@ export async function GET(request: NextRequest) {
       (sum, order) =>
         sum +
         order.items.reduce(
-          (itemSum, item) => itemSum + Number(item.qty || 0),
+          (itemSum, item) =>
+            itemSum + Number(item.qty || 0),
           0
         ),
       0
     );
 
     const averageOrderValue =
-      validOrders.length > 0 ? totalSales / validOrders.length : 0;
+      validOrders.length > 0
+        ? totalSales / validOrders.length
+        : 0;
 
-    const pendingOrders = orders.filter((order) => order.status === "pending").length;
-    const completedOrders = orders.filter((order) => order.status === "completed").length;
-    const cancelledOrders = orders.filter((order) => order.status === "cancelled").length;
+    const pendingOrders = orders.filter(
+      (order) => order.status === "pending"
+    ).length;
+
+    const completedOrders = orders.filter(
+      (order) => order.status === "completed"
+    ).length;
+
+    const cancelledOrders = orders.filter(
+      (order) => order.status === "cancelled"
+    ).length;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const todayOrders = orders.filter((order) => {
       const created = new Date(order.createdAt);
+
       return created >= today && !isCancelled(order.status);
     });
 
@@ -169,12 +202,36 @@ export async function GET(request: NextRequest) {
     );
 
     const quickCards = [
-      { label: "Categories", value: categoryCount, href: "/admin/categories" },
-      { label: "Menu Items", value: menuItemCount, href: "/admin/menu-items" },
-      { label: "Addon Groups", value: addonGroupCount, href: "/admin/addons" },
-      { label: "Hero Banners", value: bannerCount, href: "/admin/banners" },
-      { label: "Active Coupons", value: activeCoupons, href: "/admin/coupons" },
-      { label: "Messages", value: contactCount, href: "/admin/messages" },
+      {
+        label: "Categories",
+        value: categoryCount,
+        href: "/admin/categories",
+      },
+      {
+        label: "Menu Items",
+        value: menuItemCount,
+        href: "/admin/menu-items",
+      },
+      {
+        label: "Addon Groups",
+        value: addonGroupCount,
+        href: "/admin/addons",
+      },
+      {
+        label: "Hero Banners",
+        value: bannerCount,
+        href: "/admin/banners",
+      },
+      {
+        label: "Active Coupons",
+        value: activeCoupons,
+        href: "/admin/coupons",
+      },
+      {
+        label: "Messages",
+        value: contactCount,
+        href: "/admin/messages",
+      },
     ];
 
     const kpis = [
@@ -222,18 +279,23 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       ok: true,
+
       data: {
         range: {
           start: startDate.toISOString().slice(0, 10),
           end: endDate.toISOString().slice(0, 10),
         },
+
         quickCards,
+
         kpis,
+
         statusCounts: {
           pendingOrders,
           completedOrders,
           cancelledOrders,
         },
+
         recentOrders: recentOrders.map((order) => ({
           id: order.id,
           customerName: order.customerName,
@@ -243,6 +305,7 @@ export async function GET(request: NextRequest) {
           addressLabel: order.addressLabel,
           itemCount: order.items.length,
         })),
+
         topItems: topItems.map((item) => ({
           name: item.name,
           sold: Number(item._sum.qty || 0),
@@ -253,7 +316,9 @@ export async function GET(request: NextRequest) {
     console.error("Admin dashboard API error:", error);
 
     const message =
-      error instanceof Error ? error.message : "Unknown server error";
+      error instanceof Error
+        ? error.message
+        : "Unknown server error";
 
     return NextResponse.json(
       {

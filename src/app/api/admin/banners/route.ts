@@ -1,11 +1,15 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 
+async function getPrisma() {
+  const { prisma } = await import("../../../../lib/prisma");
+  return prisma;
+}
 
 const uploadDir = path.join(process.cwd(), "public", "uploaded-banners");
 
@@ -28,6 +32,8 @@ async function saveImage(file: File | null, prefix: string) {
 
 export async function GET() {
   try {
+    const prisma = await getPrisma();
+
     const banners = await prisma.heroBanner.findMany({
       orderBy: [{ order: "asc" }, { createdAt: "desc" }],
     });
@@ -35,7 +41,10 @@ export async function GET() {
     return NextResponse.json({ success: true, banners });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, message: error?.message || "Failed to load banners." },
+      {
+        success: false,
+        message: error?.message || "Failed to load banners.",
+      },
       { status: 500 }
     );
   }
@@ -43,6 +52,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const prisma = await getPrisma();
+
     const formData = await request.formData();
 
     const desktopFile = formData.get("image") as File | null;
@@ -53,7 +64,10 @@ export async function POST(request: Request) {
 
     if (!image) {
       return NextResponse.json(
-        { success: false, message: "Desktop banner image is required." },
+        {
+          success: false,
+          message: "Desktop banner image is required.",
+        },
         { status: 400 }
       );
     }
@@ -75,7 +89,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, banner });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, message: error?.message || "Failed to create banner." },
+      {
+        success: false,
+        message: error?.message || "Failed to create banner.",
+      },
       { status: 500 }
     );
   }
@@ -83,12 +100,18 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const prisma = await getPrisma();
+
     const formData = await request.formData();
 
     const id = String(formData.get("id") || "");
+
     if (!id) {
       return NextResponse.json(
-        { success: false, message: "Banner ID is required." },
+        {
+          success: false,
+          message: "Banner ID is required.",
+        },
         { status: 400 }
       );
     }
@@ -117,7 +140,10 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ success: true, banner });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, message: error?.message || "Failed to update banner." },
+      {
+        success: false,
+        message: error?.message || "Failed to update banner.",
+      },
       { status: 500 }
     );
   }
@@ -125,12 +151,17 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const prisma = await getPrisma();
+
     const body = await request.json();
     const id = String(body.id || "");
 
     if (!id) {
       return NextResponse.json(
-        { success: false, message: "Banner ID is required." },
+        {
+          success: false,
+          message: "Banner ID is required.",
+        },
         { status: 400 }
       );
     }
@@ -142,7 +173,10 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, message: error?.message || "Failed to delete banner." },
+      {
+        success: false,
+        message: error?.message || "Failed to delete banner.",
+      },
       { status: 500 }
     );
   }

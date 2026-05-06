@@ -1,8 +1,13 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
+
+async function getPrisma() {
+  const { prisma } = await import("../../../../lib/prisma");
+  return prisma;
+}
 
 function calculateFee({
   distanceKm,
@@ -27,6 +32,8 @@ function calculateFee({
 
 export async function POST(request: Request) {
   try {
+    const prisma = await getPrisma();
+
     const body = await request.json();
 
     const lat = Number(body.lat || 0);
@@ -51,35 +58,46 @@ export async function POST(request: Request) {
       );
     }
 
-    const url = new URL("https://maps.googleapis.com/maps/api/distancematrix/json");
+    const url = new URL(
+      "https://maps.googleapis.com/maps/api/distancematrix/json"
+    );
+
     url.searchParams.set("origins", origin);
     url.searchParams.set("destinations", `${lat},${lng}`);
     url.searchParams.set("mode", "driving");
     url.searchParams.set("units", "metric");
     url.searchParams.set("key", apiKey);
 
-    const googleResponse = await fetch(url.toString(), { cache: "no-store" });
+    const googleResponse = await fetch(url.toString(), {
+      cache: "no-store",
+    });
+
     const googleData = await googleResponse.json();
 
     const element = googleData?.rows?.[0]?.elements?.[0];
 
-  if (!googleResponse.ok || !element || element.status !== "OK") {
-    console.error("Google Distance Error:", JSON.stringify(googleData, null, 2));
+    if (!googleResponse.ok || !element || element.status !== "OK") {
+      console.error(
+        "Google Distance Error:",
+        JSON.stringify(googleData, null, 2)
+      );
 
-    const googleStatus = element?.status || googleData?.status || "UNKNOWN";
+      const googleStatus =
+        element?.status || googleData?.status || "UNKNOWN";
 
-    return NextResponse.json(
-      {
-        success: false,
-        message:
-          googleStatus === "ZERO_RESULTS"
-            ? "This address is outside our delivery range. Please choose another address closer to Ravintola Sinet."
-            : googleData?.error_message || "Google distance calculation failed.",
-        googleStatus,
-      },
-      { status: 400 }
-    );
-  }
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            googleStatus === "ZERO_RESULTS"
+              ? "This address is outside our delivery range. Please choose another address closer to Ravintola Sinet."
+              : googleData?.error_message ||
+                "Google distance calculation failed.",
+          googleStatus,
+        },
+        { status: 400 }
+      );
+    }
 
     const distanceMeters = Number(element.distance.value || 0);
     const distanceKm = distanceMeters / 1000;
@@ -89,25 +107,25 @@ export async function POST(request: Request) {
       where: { isActive: true },
     });
 
-  if (pricing && distanceKm > Number(pricing.maxDistanceKm || 0)) {
-    return NextResponse.json(
-      {
-        success: false,
-        message: `This address is outside our delivery area. Maximum delivery distance is ${Number(
-          pricing.maxDistanceKm
-        ).toFixed(1)} km.`,
-        distanceKm,
-        maxDistanceKm: Number(pricing.maxDistanceKm),
-        outOfDeliveryArea: true,
-      },
-      { status: 400 }
-    );
-  }
+    if (pricing && distanceKm > Number(pricing.maxDistanceKm || 0)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `This address is outside our delivery area. Maximum delivery distance is ${Number(
+            pricing.maxDistanceKm
+          ).toFixed(1)} km.`,
+          distanceKm,
+          maxDistanceKm: Number(pricing.maxDistanceKm),
+          outOfDeliveryArea: true,
+        },
+        { status: 400 }
+      );
+    }
 
-  let deliveryFee = 0;
+    let deliveryFee = 0;
 
-  if (pricing) {
-    deliveryFee = calculateFee({
+    if (pricing) {
+      deliveryFee = calculateFee({
         distanceKm,
         baseKm: Number(pricing.baseKm),
         baseFee: Number(pricing.baseFee),
@@ -156,7 +174,8 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         success: false,
-        message: error?.message || "Failed to calculate delivery distance.",
+        message:
+          error?.message || "Failed to calculate delivery distance.",
       },
       { status: 500 }
     );

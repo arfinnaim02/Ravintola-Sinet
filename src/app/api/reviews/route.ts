@@ -1,11 +1,18 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../lib/prisma";
+
+async function getPrisma() {
+  const { prisma } = await import("../../../lib/prisma");
+  return prisma;
+}
 
 export async function GET() {
   try {
+    const prisma = await getPrisma();
+
     const reviews = await prisma.review.findMany({
       orderBy: {
         createdAt: "desc",
@@ -44,6 +51,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const prisma = await getPrisma();
+
     const body = await request.json();
 
     const name = String(body.name || "").trim();

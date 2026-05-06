@@ -1,8 +1,13 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
+
+async function getPrisma() {
+  const { prisma } = await import("../../../../lib/prisma");
+  return prisma;
+}
 
 function slugify(value: string) {
   return value
@@ -15,6 +20,8 @@ function slugify(value: string) {
 
 export async function GET() {
   try {
+    const prisma = await getPrisma();
+
     const categories = await prisma.category.findMany({
       include: {
         _count: {
@@ -29,7 +36,10 @@ export async function GET() {
     return NextResponse.json({ success: true, categories });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, message: error?.message || "Failed to load categories." },
+      {
+        success: false,
+        message: error?.message || "Failed to load categories.",
+      },
       { status: 500 }
     );
   }
@@ -37,6 +47,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const prisma = await getPrisma();
+
     const body = await request.json();
 
     const name = String(body.name || "").trim();
@@ -46,7 +58,10 @@ export async function POST(request: Request) {
 
     if (!name) {
       return NextResponse.json(
-        { success: false, message: "Category name is required." },
+        {
+          success: false,
+          message: "Category name is required.",
+        },
         { status: 400 }
       );
     }
@@ -65,7 +80,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, category });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, message: error?.message || "Failed to create category." },
+      {
+        success: false,
+        message: error?.message || "Failed to create category.",
+      },
       { status: 500 }
     );
   }
@@ -73,6 +91,8 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const prisma = await getPrisma();
+
     const body = await request.json();
 
     const id = String(body.id || "");
@@ -83,7 +103,10 @@ export async function PATCH(request: Request) {
 
     if (!id || !name) {
       return NextResponse.json(
-        { success: false, message: "Category ID and name are required." },
+        {
+          success: false,
+          message: "Category ID and name are required.",
+        },
         { status: 400 }
       );
     }
@@ -103,7 +126,10 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ success: true, category });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, message: error?.message || "Failed to update category." },
+      {
+        success: false,
+        message: error?.message || "Failed to update category.",
+      },
       { status: 500 }
     );
   }
@@ -111,12 +137,17 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const prisma = await getPrisma();
+
     const body = await request.json();
     const id = String(body.id || "");
 
     if (!id) {
       return NextResponse.json(
-        { success: false, message: "Category ID is required." },
+        {
+          success: false,
+          message: "Category ID is required.",
+        },
         { status: 400 }
       );
     }
@@ -129,7 +160,8 @@ export async function DELETE(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          message: "This category has menu items. Move or delete those items first.",
+          message:
+            "This category has menu items. Move or delete those items first.",
         },
         { status: 400 }
       );
@@ -142,7 +174,10 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, message: error?.message || "Failed to delete category." },
+      {
+        success: false,
+        message: error?.message || "Failed to delete category.",
+      },
       { status: 500 }
     );
   }
