@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 type QuickCard = {
@@ -62,7 +62,7 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-export default function AdminDashboardPage() {
+function AdminDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -360,5 +360,22 @@ export default function AdminDashboardPage() {
         )}
       </section>
     </main>
+  );
+}
+export default function AdminDashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-[#f4eee4] p-8">
+          <div className="mx-auto max-w-7xl rounded-3xl border border-[#e0d3bf] bg-white p-8 shadow-xl shadow-[#3b1f18]/8">
+            <p className="text-sm font-bold text-[#7b6255]">
+              Loading dashboard…
+            </p>
+          </div>
+        </main>
+      }
+    >
+      <AdminDashboardContent />
+    </Suspense>
   );
 }
