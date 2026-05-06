@@ -1,4 +1,7 @@
-import { prisma } from "./prisma";
+async function getPrisma() {
+  const { prisma } = await import("./prisma");
+  return prisma;
+}
 
 function getMonthKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -21,6 +24,8 @@ function generateLoyaltyCode(prefix: string, percent: number, monthKey: string) 
 }
 
 export async function ensureDefaultLoyaltyProgram() {
+  const prisma = await getPrisma();
+
   const existing = await prisma.loyaltyProgram.findFirst();
 
   if (existing) return existing;
@@ -38,6 +43,8 @@ export async function ensureDefaultLoyaltyProgram() {
 }
 
 export async function getLoyaltyProgress(userId: string) {
+  const prisma = await getPrisma();
+
   const program = await ensureDefaultLoyaltyProgram();
   const issuedMonth = getMonthKey();
   const { start, end } = monthRange(issuedMonth);
@@ -73,6 +80,8 @@ export async function getLoyaltyProgress(userId: string) {
 }
 
 export async function checkAndGenerateLoyaltyReward(userId: string) {
+  const prisma = await getPrisma();
+
   const program = await ensureDefaultLoyaltyProgram();
 
   if (!program.isActive) {

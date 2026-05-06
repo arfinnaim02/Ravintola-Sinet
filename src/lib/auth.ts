@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
-import { prisma } from "./prisma";
 
 const CUSTOMER_COOKIE = "sinet_customer_auth";
 
@@ -15,6 +14,11 @@ export type AuthUser = {
   phone: string;
   role: string;
 };
+
+async function getPrisma() {
+  const { prisma } = await import("./prisma");
+  return prisma;
+}
 
 export async function createCustomerToken(user: AuthUser) {
   return new SignJWT(user)
@@ -32,6 +36,8 @@ export async function getCurrentUser() {
 
     const verified = await jwtVerify(token, secret);
     const payload = verified.payload as AuthUser;
+
+    const prisma = await getPrisma();
 
     const user = await prisma.user.findFirst({
       where: {

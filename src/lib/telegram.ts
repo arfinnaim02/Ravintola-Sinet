@@ -1,5 +1,3 @@
-import { prisma } from "./prisma";
-
 type TelegramOrder = {
   id: string;
   status: string;
@@ -26,6 +24,11 @@ type TelegramOrder = {
     }[];
   }[];
 };
+
+async function getPrisma() {
+  const { prisma } = await import("./prisma");
+  return prisma;
+}
 
 const statusLabels: Record<string, string> = {
   pending: "Pending",
@@ -124,8 +127,14 @@ function buildStatusKeyboard(orderId: string) {
         { text: "Prepare", callback_data: `order_status:preparing:${orderId}` },
       ],
       [
-        { text: "On the way", callback_data: `order_status:on_the_way:${orderId}` },
-        { text: "Completed", callback_data: `order_status:completed:${orderId}` },
+        {
+          text: "On the way",
+          callback_data: `order_status:on_the_way:${orderId}`,
+        },
+        {
+          text: "Completed",
+          callback_data: `order_status:completed:${orderId}`,
+        },
       ],
       [{ text: "Cancel", callback_data: `order_status:cancelled:${orderId}` }],
     ],
@@ -151,15 +160,21 @@ export async function sendTelegramOrder(order: TelegramOrder) {
 
   const data = await response.json();
 
-  await prisma.telegramLog.create({
-    data: {
-      ok: Boolean(data.ok),
-      kind: "send_order",
-      chatId: String(getAdminChatId()),
-      messagePreview: order.id,
-      responseText: JSON.stringify(data).slice(0, 1000),
-    },
-  });
+  try {
+    const prisma = await getPrisma();
+
+    await prisma.telegramLog.create({
+      data: {
+        ok: Boolean(data.ok),
+        kind: "send_order",
+        chatId: String(getAdminChatId()),
+        messagePreview: order.id,
+        responseText: JSON.stringify(data).slice(0, 1000),
+      },
+    });
+  } catch (logError) {
+    console.error("Telegram log save failed:", logError);
+  }
 
   if (!data.ok) return null;
 
@@ -168,6 +183,8 @@ export async function sendTelegramOrder(order: TelegramOrder) {
 
 export async function editTelegramOrderMessage(orderId: string) {
   if (!isTelegramConfigured()) return;
+
+  const prisma = await getPrisma();
 
   const order = await prisma.deliveryOrder.findUnique({
     where: { id: orderId },
@@ -202,15 +219,19 @@ export async function editTelegramOrderMessage(orderId: string) {
 
   const data = await response.json();
 
-  await prisma.telegramLog.create({
-    data: {
-      ok: Boolean(data.ok),
-      kind: "edit_order",
-      chatId: order.telegramChatId,
-      messagePreview: order.id,
-      responseText: JSON.stringify(data).slice(0, 1000),
-    },
-  });
+  try {
+    await prisma.telegramLog.create({
+      data: {
+        ok: Boolean(data.ok),
+        kind: "edit_order",
+        chatId: order.telegramChatId,
+        messagePreview: order.id,
+        responseText: JSON.stringify(data).slice(0, 1000),
+      },
+    });
+  } catch (logError) {
+    console.error("Telegram edit log save failed:", logError);
+  }
 }
 
 export async function answerTelegramCallback(callbackQueryId: string, text: string) {
