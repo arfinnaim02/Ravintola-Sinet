@@ -1,11 +1,20 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
-import { getCurrentUser } from "../../../../lib/auth";
+
+async function getDeps() {
+  const [{ prisma }, { getCurrentUser }] = await Promise.all([
+    import("../../../../lib/prisma"),
+    import("../../../../lib/auth"),
+  ]);
+
+  return { prisma, getCurrentUser };
+}
 
 export async function GET() {
+  const { prisma, getCurrentUser } = await getDeps();
   const user = await getCurrentUser();
 
   if (!user) {
@@ -20,10 +29,18 @@ export async function GET() {
     orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
   });
 
-  return NextResponse.json({ success: true, addresses });
+  return NextResponse.json({
+    success: true,
+    addresses: addresses.map((address) => ({
+      ...address,
+      createdAt: address.createdAt.toISOString(),
+      updatedAt: address.updatedAt.toISOString(),
+    })),
+  });
 }
 
 export async function POST(request: Request) {
+  const { prisma, getCurrentUser } = await getDeps();
   const user = await getCurrentUser();
 
   if (!user) {
@@ -70,10 +87,18 @@ export async function POST(request: Request) {
     },
   });
 
-  return NextResponse.json({ success: true, address });
+  return NextResponse.json({
+    success: true,
+    address: {
+      ...address,
+      createdAt: address.createdAt.toISOString(),
+      updatedAt: address.updatedAt.toISOString(),
+    },
+  });
 }
 
 export async function PATCH(request: Request) {
+  const { prisma, getCurrentUser } = await getDeps();
   const user = await getCurrentUser();
 
   if (!user) {
@@ -121,10 +146,18 @@ export async function PATCH(request: Request) {
     },
   });
 
-  return NextResponse.json({ success: true, address });
+  return NextResponse.json({
+    success: true,
+    address: {
+      ...address,
+      createdAt: address.createdAt.toISOString(),
+      updatedAt: address.updatedAt.toISOString(),
+    },
+  });
 }
 
 export async function DELETE(request: Request) {
+  const { prisma, getCurrentUser } = await getDeps();
   const user = await getCurrentUser();
 
   if (!user) {

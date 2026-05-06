@@ -1,8 +1,5 @@
 "use client";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import DeliveryLocationModal from "../../../components/DeliveryLocationModal";
