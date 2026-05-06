@@ -1,13 +1,26 @@
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
-import { checkAndGenerateLoyaltyReward } from "../../../../lib/loyalty";
-import { editTelegramOrderMessage } from "../../../../lib/telegram";
+
+async function getPrisma() {
+  const { prisma } = await import("../../../../lib/prisma");
+  return prisma;
+}
+
+async function getLoyalty() {
+  return await import("../../../../lib/loyalty");
+}
+
+async function getTelegram() {
+  return await import("../../../../lib/telegram");
+}
+
 export async function GET() {
   try {
+    const prisma = await getPrisma();
+
     const orders = await prisma.deliveryOrder.findMany({
       include: {
         items: {
@@ -32,6 +45,10 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    const prisma = await getPrisma();
+    const { checkAndGenerateLoyaltyReward } = await getLoyalty();
+    const { editTelegramOrderMessage } = await getTelegram();
+
     const body = await request.json();
 
     const ids = Array.isArray(body.ids) ? body.ids : body.id ? [body.id] : [];
@@ -44,56 +61,56 @@ export async function PATCH(request: Request) {
       );
     }
 
-const updatedOrders = await prisma.deliveryOrder.findMany({
-  where: {
-    id: {
-      in: ids,
-    },
-  },
-  select: {
-    id: true,
-    userId: true,
-    status: true,
-  },
-});
-
-  await prisma.deliveryOrder.updateMany({
-    where: {
-      id: {
-        in: ids,
+    const updatedOrders = await prisma.deliveryOrder.findMany({
+      where: {
+        id: {
+          in: ids,
+        },
       },
-    },
-    data: {
-      status,
-    },
-  });
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+      },
+    });
 
-  const generatedRewards = [];
+    await prisma.deliveryOrder.updateMany({
+      where: {
+        id: {
+          in: ids,
+        },
+      },
+      data: {
+        status,
+      },
+    });
 
-  if (status === "completed") {
-    for (const order of updatedOrders) {
-      if (!order.userId || order.status === "completed") continue;
+    const generatedRewards = [];
 
-      const reward = await checkAndGenerateLoyaltyReward(order.userId);
+    if (status === "completed") {
+      for (const order of updatedOrders) {
+        if (!order.userId || order.status === "completed") continue;
 
-      if (reward) {
-        generatedRewards.push(reward);
+        const reward = await checkAndGenerateLoyaltyReward(order.userId);
+
+        if (reward) {
+          generatedRewards.push(reward);
+        }
       }
     }
-  }
 
-  for (const id of ids) {
-    try {
-      await editTelegramOrderMessage(id);
-    } catch (telegramError) {
-      console.error("Telegram message edit failed:", telegramError);
+    for (const id of ids) {
+      try {
+        await editTelegramOrderMessage(id);
+      } catch (telegramError) {
+        console.error("Telegram message edit failed:", telegramError);
+      }
     }
-  }
 
-  return NextResponse.json({
-    success: true,
-    generatedRewards,
-  });
+    return NextResponse.json({
+      success: true,
+      generatedRewards,
+    });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, message: error?.message || "Failed to update order." },
@@ -104,6 +121,8 @@ const updatedOrders = await prisma.deliveryOrder.findMany({
 
 export async function DELETE(request: Request) {
   try {
+    const prisma = await getPrisma();
+
     const body = await request.json();
 
     const ids = Array.isArray(body.ids) ? body.ids : body.id ? [body.id] : [];

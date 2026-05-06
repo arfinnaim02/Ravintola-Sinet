@@ -1,12 +1,17 @@
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../../lib/prisma";
+
+async function getPrisma() {
+  const { prisma } = await import("../../../../../lib/prisma");
+  return prisma;
+}
 
 export async function POST(request: Request) {
   try {
+    const prisma = await getPrisma();
     const body = await request.json();
 
     const groupId = String(body.groupId || "");
@@ -40,6 +45,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const prisma = await getPrisma();
     const body = await request.json();
 
     const id = String(body.id || "");
@@ -73,6 +79,7 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const prisma = await getPrisma();
     const body = await request.json();
     const id = String(body.id || "");
 

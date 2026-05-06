@@ -1,11 +1,15 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 
+async function getPrisma() {
+  const { prisma } = await import("../../../../lib/prisma");
+  return prisma;
+}
 
 const uploadDir = path.join(process.cwd(), "public", "uploaded-menu-items");
 
@@ -28,6 +32,8 @@ async function saveImage(file: File | null) {
 
 export async function GET() {
   try {
+    const prisma = await getPrisma();
+
     const [items, categories] = await Promise.all([
       prisma.menuItem.findMany({
         include: {
@@ -56,7 +62,10 @@ export async function GET() {
     });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, message: error?.message || "Failed to load menu items." },
+      {
+        success: false,
+        message: error?.message || "Failed to load menu items.",
+      },
       { status: 500 }
     );
   }
@@ -64,6 +73,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const prisma = await getPrisma();
     const formData = await request.formData();
 
     const name = String(formData.get("name") || "").trim();
@@ -96,7 +106,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, item });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, message: error?.message || "Failed to create menu item." },
+      {
+        success: false,
+        message: error?.message || "Failed to create menu item.",
+      },
       { status: 500 }
     );
   }
@@ -104,6 +117,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const prisma = await getPrisma();
     const formData = await request.formData();
 
     const id = String(formData.get("id") || "");
@@ -140,7 +154,10 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ success: true, item });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, message: error?.message || "Failed to update menu item." },
+      {
+        success: false,
+        message: error?.message || "Failed to update menu item.",
+      },
       { status: 500 }
     );
   }
@@ -148,6 +165,7 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const prisma = await getPrisma();
     const body = await request.json();
     const id = String(body.id || "");
 
@@ -165,7 +183,10 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, message: error?.message || "Failed to delete menu item." },
+      {
+        success: false,
+        message: error?.message || "Failed to delete menu item.",
+      },
       { status: 500 }
     );
   }

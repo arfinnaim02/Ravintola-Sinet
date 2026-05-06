@@ -1,11 +1,18 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
+
+async function getPrisma() {
+  const { prisma } = await import("../../../../lib/prisma");
+  return prisma;
+}
 
 export async function GET() {
   try {
+    const prisma = await getPrisma();
+
     const [menuItems, addonGroups] = await Promise.all([
       prisma.menuItem.findMany({
         include: {
@@ -48,6 +55,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const prisma = await getPrisma();
     const body = await request.json();
 
     const menuItemId = String(body.menuItemId || "");
@@ -128,6 +136,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const prisma = await getPrisma();
     const body = await request.json();
 
     const menuItemId = String(body.menuItemId || "");

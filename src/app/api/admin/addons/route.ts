@@ -1,8 +1,13 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
+
+async function getPrisma() {
+  const { prisma } = await import("../../../../lib/prisma");
+  return prisma;
+}
 
 function slugify(value: string) {
   return value
@@ -15,6 +20,8 @@ function slugify(value: string) {
 
 export async function GET() {
   try {
+    const prisma = await getPrisma();
+
     const addonGroups = await prisma.addonGroup.findMany({
       include: {
         options: {
@@ -40,6 +47,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const prisma = await getPrisma();
     const body = await request.json();
 
     const name = String(body.name || "").trim();
@@ -72,7 +80,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, group });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, message: error?.message || "Failed to create addon group." },
+      {
+        success: false,
+        message: error?.message || "Failed to create addon group.",
+      },
       { status: 500 }
     );
   }
@@ -80,6 +91,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const prisma = await getPrisma();
     const body = await request.json();
 
     const id = String(body.id || "");
@@ -114,7 +126,10 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ success: true, group });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, message: error?.message || "Failed to update addon group." },
+      {
+        success: false,
+        message: error?.message || "Failed to update addon group.",
+      },
       { status: 500 }
     );
   }
@@ -122,6 +137,7 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const prisma = await getPrisma();
     const body = await request.json();
     const id = String(body.id || "");
 
@@ -140,7 +156,8 @@ export async function DELETE(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          message: "This addon group is assigned to menu items. Remove assignments first.",
+          message:
+            "This addon group is assigned to menu items. Remove assignments first.",
         },
         { status: 400 }
       );
@@ -151,7 +168,10 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, message: error?.message || "Failed to delete addon group." },
+      {
+        success: false,
+        message: error?.message || "Failed to delete addon group.",
+      },
       { status: 500 }
     );
   }

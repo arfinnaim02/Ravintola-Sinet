@@ -1,14 +1,21 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
-import {
-  answerTelegramCallback,
-  editTelegramOrderMessage,
-} from "../../../../lib/telegram";
-import { checkAndGenerateLoyaltyReward } from "../../../../lib/loyalty";
+
+async function getPrisma() {
+  const { prisma } = await import("../../../../lib/prisma");
+  return prisma;
+}
+
+async function getTelegram() {
+  return await import("../../../../lib/telegram");
+}
+
+async function getLoyalty() {
+  return await import("../../../../lib/loyalty");
+}
 
 const allowedStatuses = [
   "pending",
@@ -33,6 +40,11 @@ function isWebhookAuthorized(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const prisma = await getPrisma();
+    const { answerTelegramCallback, editTelegramOrderMessage } =
+      await getTelegram();
+    const { checkAndGenerateLoyaltyReward } = await getLoyalty();
+
     if (!isWebhookAuthorized(request)) {
       return NextResponse.json(
         { success: false, message: "Unauthorized webhook." },

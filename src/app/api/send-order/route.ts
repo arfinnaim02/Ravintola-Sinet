@@ -1,11 +1,9 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
-import { prisma } from "../../../lib/prisma";
-import { getCurrentUser } from "../../../lib/auth";
-import { sendTelegramOrder } from "../../../lib/telegram";
 
 type CartAddon = {
   groupId: string;
@@ -39,6 +37,19 @@ type OrderBody = {
   cart: CartItem[];
   couponCode?: string;
 };
+
+async function getPrisma() {
+  const { prisma } = await import("../../../lib/prisma");
+  return prisma;
+}
+
+async function getAuth() {
+  return await import("../../../lib/auth");
+}
+
+async function getTelegram() {
+  return await import("../../../lib/telegram");
+}
 
 function normalizeCode(value: string) {
   return value.trim().toUpperCase().replace(/\s+/g, "");
@@ -80,7 +91,11 @@ function calculateDeliveryFee({
   return Math.min(rawFee, maxFee);
 }
 
-async function calculateServerDelivery(distanceKm: number, subtotal: number) {
+async function calculateServerDelivery(
+  prisma: any,
+  distanceKm: number,
+  subtotal: number
+) {
   const pricing = await prisma.deliveryPricing.findFirst({
     where: { isActive: true },
   });
@@ -140,7 +155,10 @@ async function calculateServerDelivery(distanceKm: number, subtotal: number) {
 
 function calculateDiscount(coupon: any, subtotal: number, deliveryFee: number) {
   if (coupon.discountType === "percent") {
-    return Math.min(subtotal, (subtotal * Number(coupon.discountValue || 0)) / 100);
+    return Math.min(
+      subtotal,
+      (subtotal * Number(coupon.discountValue || 0)) / 100
+    );
   }
 
   if (coupon.discountType === "fixed") {
@@ -184,7 +202,12 @@ function buildItemsHtml(cart: CartItem[]) {
     .join("");
 }
 
-async function validateCoupon(code: string, subtotal: number, deliveryFee: number) {
+async function validateCoupon(
+  prisma: any,
+  code: string,
+  subtotal: number,
+  deliveryFee: number
+) {
   const normalizedCode = normalizeCode(code);
 
   if (!normalizedCode) {
@@ -218,7 +241,9 @@ async function validateCoupon(code: string, subtotal: number, deliveryFee: numbe
   }
 
   if (subtotal < Number(coupon.minSubtotal || 0)) {
-    throw new Error(`Minimum subtotal is ${formatMoney(Number(coupon.minSubtotal || 0))}.`);
+    throw new Error(
+      `Minimum subtotal is ${formatMoney(Number(coupon.minSubtotal || 0))}.`
+    );
   }
 
   return {
@@ -230,6 +255,10 @@ async function validateCoupon(code: string, subtotal: number, deliveryFee: numbe
 
 export async function POST(request: Request) {
   try {
+    const prisma = await getPrisma();
+    const { getCurrentUser } = await getAuth();
+    const { sendTelegramOrder } = await getTelegram();
+
     const currentUser = await getCurrentUser();
     const body = (await request.json()) as OrderBody;
 
@@ -263,14 +292,26 @@ export async function POST(request: Request) {
     }
 
     const subtotal = cart.reduce(
-      (sum, item) => sum + Number(item.unitPrice || 0) * Number(item.quantity || 1),
+      (sum, item) =>
+        sum + Number(item.unitPrice || 0) * Number(item.quantity || 1),
       0
     );
 
-    const delivery = await calculateServerDelivery(Number(distanceKm || 0), subtotal);
+    const delivery = await calculateServerDelivery(
+      prisma,
+      Number(distanceKm || 0),
+      subtotal
+    );
+
     const deliveryFee = delivery.deliveryFee;
 
-    const couponResult = await validateCoupon(couponCode, subtotal, deliveryFee);
+    const couponResult = await validateCoupon(
+      prisma,
+      couponCode,
+      subtotal,
+      deliveryFee
+    );
+
     const couponDiscount = couponResult.couponDiscount;
     const total = Math.max(0, subtotal + deliveryFee - couponDiscount);
 
@@ -340,27 +381,27 @@ export async function POST(request: Request) {
       });
     }
 
-      try {
-        const telegramMessage = await sendTelegramOrder({
-          ...order,
-          distanceKm: Number(order.distanceKm || 0),
+    try {
+      const telegramMessage = await sendTelegramOrder({
+        ...order,
+        distanceKm: Number(order.distanceKm || 0),
+      });
+
+      if (telegramMessage?.chat?.id && telegramMessage?.message_id) {
+        await prisma.deliveryOrder.update({
+          where: { id: order.id },
+          data: {
+            telegramChatId: String(telegramMessage.chat.id),
+            telegramMessageId: BigInt(telegramMessage.message_id),
+            telegramLastStatusSent: order.status,
+          },
         });
-
-        if (telegramMessage?.chat?.id && telegramMessage?.message_id) {
-          await prisma.deliveryOrder.update({
-            where: { id: order.id },
-            data: {
-              telegramChatId: String(telegramMessage.chat.id),
-              telegramMessageId: BigInt(telegramMessage.message_id),
-              telegramLastStatusSent: order.status,
-            },
-          });
-        }
-      } catch (telegramError) {
-        console.error("Telegram order notification failed:", telegramError);
       }
+    } catch (telegramError) {
+      console.error("Telegram order notification failed:", telegramError);
+    }
 
-      let emailStatus = "skipped";
+    let emailStatus = "skipped";
 
     if (isRealSmtpConfigured()) {
       try {
