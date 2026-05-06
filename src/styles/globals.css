@@ -1,0 +1,168 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ================================
+   ROOT VARIABLES (Design System)
+================================ */
+:root {
+  --font-script: var(--font-script);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+
+  --color-brown: #3b1f18;
+  --color-dark: #1b0e0a;
+  --color-gold: #c9a45c;
+  --color-gold-soft: #d7b875;
+  --color-cream: #f4eee4;
+  --color-muted: #7b6255;
+}
+
+/* ================================
+   BASE RESET
+================================ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body), sans-serif;
+  background-color: var(--color-cream);
+  color: var(--color-brown);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ================================
+   TYPOGRAPHY
+================================ */
+.font-script {
+  font-family: var(--font-script), cursive;
+}
+
+.font-display {
+  font-family: var(--font-display), serif;
+}
+
+.font-body {
+  font-family: var(--font-body), sans-serif;
+}
+
+/* ================================
+   LAYOUT
+================================ */
+.sinet-container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+/* ================================
+   BUTTONS (Premium Style)
+================================ */
+.sinet-gold-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 12px 26px;
+
+  background-color: var(--color-gold);
+  color: var(--color-brown);
+
+  font-weight: 700;
+  letter-spacing: 0.02em;
+
+  border-radius: 2px;
+
+  transition: all 0.25s ease;
+}
+
+.sinet-gold-button:hover {
+  background-color: var(--color-gold-soft);
+  transform: translateY(-1px);
+}
+
+.sinet-outline-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 12px 26px;
+
+  border: 1px solid rgba(215, 184, 117, 0.5);
+  color: white;
+
+  font-weight: 700;
+  letter-spacing: 0.02em;
+
+  border-radius: 2px;
+
+  transition: all 0.25s ease;
+}
+
+.sinet-outline-button:hover {
+  border-color: var(--color-gold-soft);
+  color: var(--color-gold-soft);
+  transform: translateY(-1px);
+}
+
+/* ================================
+   CARD EFFECT (Hover Premium)
+================================ */
+.card-premium {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-premium:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 60px rgba(59, 31, 24, 0.18);
+}
+
+/* ================================
+   IMAGE SMOOTH LOADING
+================================ */
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* ================================
+   MOBILE OPTIMIZATION
+================================ */
+@media (max-width: 640px) {
+  .sinet-container {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .sinet-gold-button,
+  .sinet-outline-button {
+    width: 100%;
+  }
+}
+
+/* ================================
+   SCROLLBAR (Optional Premium)
+================================ */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(201, 164, 92, 0.6);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 164, 92, 0.9);
+}

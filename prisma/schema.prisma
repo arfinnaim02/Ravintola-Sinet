@@ -1,0 +1,395 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Category {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  slug      String     @unique
+  isActive  Boolean    @default(true)
+  order     Int        @default(0)
+  menuItems MenuItem[]
+
+  @@map("categories")
+}
+
+model MenuItem {
+  id          String   @id @default(cuid())
+  name        String
+  price       Decimal
+  description String   @default("")
+  image       String?
+  tags        String   @default("")
+  allergens   String   @default("")
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  addonGroupLinks    MenuItemAddonGroup[]
+  reservationItems   ReservationItem[]
+  deliveryOrderItems DeliveryOrderItem[]
+
+  @@map("menu_items")
+}
+
+model AddonGroup {
+  id               String   @id @default(cuid())
+  name             String   @unique
+  slug             String   @unique
+  selectionType    String   @default("single")
+  isActive         Boolean  @default(true)
+  isRequired       Boolean  @default(false)
+  minSelect        Int      @default(0)
+  maxSelect        Int?
+  freeChoicesCount Int      @default(0)
+  order            Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  options       AddonOption[]
+  menuItemLinks MenuItemAddonGroup[]
+
+  @@map("addon_groups")
+}
+
+model AddonOption {
+  id        String   @id @default(cuid())
+  name      String
+  price     Decimal  @default(0)
+  isActive  Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  groupId String
+  group   AddonGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, name])
+  @@map("addon_options")
+}
+
+model MenuItemAddonGroup {
+  id                       String   @id @default(cuid())
+  order                    Int      @default(0)
+  isRequiredOverride       Boolean?
+  minSelectOverride        Int?
+  maxSelectOverride        Int?
+  freeChoicesCountOverride Int? // ⭐ NEW FIELD
+  createdAt                DateTime @default(now())
+
+  menuItemId   String
+  addonGroupId String
+
+  menuItem   MenuItem   @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  addonGroup AddonGroup @relation(fields: [addonGroupId], references: [id], onDelete: Cascade)
+
+  @@unique([menuItemId, addonGroupId])
+  @@map("menu_item_addon_groups")
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  createdAt DateTime @default(now())
+
+  @@map("contact_messages")
+}
+
+model Reservation {
+  id             String   @id @default(cuid())
+  startDatetime  DateTime
+  name           String
+  phone          String
+  email          String   @default("")
+  partySize      Int      @default(2)
+  babySeats      Int      @default(0)
+  preferredTable Int?
+  tablesNeeded   Int      @default(1)
+  notes          String   @default("")
+  status         String   @default("pending")
+  createdAt      DateTime @default(now())
+
+  items ReservationItem[]
+
+  @@index([startDatetime])
+  @@map("reservations")
+}
+
+model ReservationItem {
+  id          String  @id @default(cuid())
+  qty         Int     @default(1)
+  unitPrice   Decimal
+  addonsTotal Decimal @default(0)
+
+  reservationId String
+  menuItemId    String
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  menuItem    MenuItem    @relation(fields: [menuItemId], references: [id], onDelete: Restrict)
+
+  addonSnapshots ReservationItemAddon[]
+
+  @@index([reservationId])
+  @@index([menuItemId])
+  @@map("reservation_items")
+}
+
+model ReservationItemAddon {
+  id          String  @id @default(cuid())
+  groupName   String
+  optionName  String
+  optionPrice Decimal @default(0)
+
+  reservationItemId String
+  reservationItem   ReservationItem @relation(fields: [reservationItemId], references: [id], onDelete: Cascade)
+
+  @@map("reservation_item_addons")
+}
+
+model DeliveryPromotion {
+  id           String    @id @default(cuid())
+  title        String    @default("Free Delivery")
+  isActive     Boolean   @default(false)
+  startAt      DateTime?
+  endAt        DateTime?
+  minSubtotal  Decimal   @default(0)
+  freeDelivery Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+
+  @@map("delivery_promotions")
+}
+
+model DeliveryOrder {
+  id             String   @id @default(cuid())
+  status         String   @default("pending")
+  couponCode     String   @default("")
+  couponDiscount Decimal  @default(0)
+  createdAt      DateTime @default(now())
+
+  customerName  String
+  customerPhone String
+  customerNote  String @default("")
+  paymentMethod String @default("cash")
+
+  addressLabel String @default("")
+  addressExtra String @default("")
+  lat          Float
+  lng          Float
+  distanceKm   Float  @default(0)
+
+  subtotal    Decimal @default(0)
+  deliveryFee Decimal @default(0)
+  total       Decimal @default(0)
+
+  promoTitle        String  @default("")
+  promoFreeDelivery Boolean @default(false)
+  promoMinSubtotal  Decimal @default(0)
+
+  telegramChatId         String    @default("")
+  telegramMessageId      BigInt?
+  telegramLastStatusSent String    @default("")
+  telegramLastActionBy   String    @default("")
+  telegramLastActionAt   DateTime?
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  items DeliveryOrderItem[]
+
+  @@map("delivery_orders")
+}
+
+model DeliveryOrderItem {
+  id          String  @id @default(cuid())
+  name        String
+  qty         Int     @default(1)
+  unitPrice   Decimal @default(0)
+  addonsTotal Decimal @default(0)
+
+  orderId    String
+  menuItemId String?
+
+  order    DeliveryOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem?     @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+
+  addonSnapshots DeliveryOrderItemAddon[]
+
+  @@map("delivery_order_items")
+}
+
+model DeliveryOrderItemAddon {
+  id          String  @id @default(cuid())
+  groupName   String
+  optionName  String
+  optionPrice Decimal @default(0)
+
+  orderItemId String
+  orderItem   DeliveryOrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@map("delivery_order_item_addons")
+}
+
+model DeliveryCoupon {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  isActive    Boolean @default(true)
+  isPersonal  Boolean @default(false)
+  issuedMonth String  @default("")
+
+  discountType  String  @default("percent")
+  discountValue Decimal @default(0)
+  minSubtotal   Decimal @default(0)
+
+  startAt   DateTime?
+  endAt     DateTime?
+  maxUses   Int?
+  usedCount Int       @default(0)
+
+  featuredTitle    String  @default("")
+  featuredSubtitle String  @default("")
+  featuredIcon     String  @default("percent")
+  isFeatured       Boolean @default(false)
+  featuredOrder    Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@map("delivery_coupons")
+}
+
+model SitePopup {
+  id           String   @id @default(cuid())
+  title        String   @default("")
+  image        String
+  redirectUrl  String   @default("")
+  isActive     Boolean  @default(true)
+  openInNewTab Boolean  @default(false)
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("site_popups")
+}
+
+model HeroBanner {
+  id          String   @id @default(cuid())
+  image       String
+  mobileImage String?
+  eyebrow     String   @default("")
+  title       String   @default("")
+  subtitle    String   @default("")
+  buttonText  String   @default("")
+  buttonUrl   String   @default("")
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@map("hero_banners")
+}
+
+model TelegramLog {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  ok             Boolean  @default(false)
+  kind           String   @default("")
+  chatId         String   @default("")
+  messagePreview String   @default("")
+  responseText   String   @default("")
+
+  @@map("telegram_logs")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  name      String
+  rating    Int
+  comment   String
+  createdAt DateTime @default(now())
+
+  @@map("reviews")
+}
+
+model LoyaltyProgram {
+  id            String   @id @default(cuid())
+  isActive      Boolean  @default(true)
+  targetOrders  Int      @default(10)
+  rewardPercent Int      @default(30)
+  couponPrefix  String   @default("LOYAL")
+  maxUses       Int      @default(1)
+  minSubtotal   Decimal  @default(0)
+  updatedAt     DateTime @updatedAt
+
+  @@map("loyalty_programs")
+}
+
+model LoyaltyReward {
+  id            String   @id @default(cuid())
+  userId        String
+  issuedMonth   String
+  orderCount    Int
+  couponCode    String
+  rewardPercent Int
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, issuedMonth])
+  @@map("loyalty_rewards")
+}
+
+model DeliveryPricing {
+  id       String  @id @default(cuid())
+  isActive Boolean @default(true)
+
+  baseKm        Decimal @default(2.00)
+  baseFee       Decimal @default(1.99)
+  perKmFee      Decimal @default(0.99)
+  maxFee        Decimal @default(8.99)
+  maxDistanceKm Decimal @default(10.00)
+
+  updatedAt DateTime @updatedAt
+
+  @@map("delivery_pricing")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String   @default("")
+  passwordHash String
+  role         String   @default("customer")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  addresses      CustomerAddress[]
+  orders         DeliveryOrder[]
+  loyaltyRewards LoyaltyReward[]
+
+  @@map("users")
+}
+
+model CustomerAddress {
+  id           String   @id @default(cuid())
+  label        String   @default("Home")
+  addressLabel String
+  addressExtra String   @default("")
+  lat          Float
+  lng          Float
+  distanceKm   Float    @default(0)
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("customer_addresses")
+}
