@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCart } from "../contexts/CartContext";
 import { useLanguage } from "../i18n/LanguageContext";
 
@@ -20,6 +21,8 @@ type HeaderUser = {
 };
 
 export default function Header() {
+  const pathname = usePathname();
+
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<HeaderUser | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -27,35 +30,57 @@ export default function Header() {
   const { totalQuantity, openCart } = useCart();
   const { lang, setLang, t } = useLanguage();
 
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const response = await fetch("/api/auth/me", {
-          cache: "no-store",
-          credentials: "include",
-        });
-        const data = await response.json();
+  const loadUser = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/auth/me?t=${Date.now()}`, {
+        cache: "no-store",
+        credentials: "include",
+      });
 
-        if (data.success && data.user) {
-          setUser(data.user);
-        }
-      } catch {
-        setUser(null);
+      const data = await response.json();
+
+      if (response.ok && data.success && data.user) {
+        setUser(data.user);
+        return;
       }
-    }
 
-    loadUser();
+      setUser(null);
+    } catch {
+      setUser(null);
+    }
   }, []);
 
+  useEffect(() => {
+    loadUser();
+
+    function handleAuthChanged() {
+      loadUser();
+    }
+
+    window.addEventListener("auth-changed", handleAuthChanged);
+    window.addEventListener("focus", handleAuthChanged);
+
+    return () => {
+      window.removeEventListener("auth-changed", handleAuthChanged);
+      window.removeEventListener("focus", handleAuthChanged);
+    };
+  }, [loadUser, pathname]);
+
   function toggleLanguage() {
-  setLang(lang === "en" ? "fi" : "en");
-}
+    setLang(lang === "en" ? "fi" : "en");
+  }
+
   async function handleCustomerLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
 
     setUser(null);
     setAccountOpen(false);
     setOpen(false);
+
+    window.dispatchEvent(new Event("auth-changed"));
     window.location.href = "/";
   }
 
@@ -80,7 +105,6 @@ export default function Header() {
               {t(item.key)}
             </Link>
           ))}
-
         </nav>
 
         <div className="flex items-center gap-3">
@@ -162,37 +186,37 @@ export default function Header() {
           </button>
 
           <div className="hidden items-center gap-2 md:flex">
-          <span
-            className={`text-xs font-black transition ${
-              lang === "en" ? "text-[#d7b875]" : "text-white/45"
-            }`}
-          >
-            EN
-          </span>
-
-          <button
-            type="button"
-            onClick={toggleLanguage}
-            aria-label="Toggle language"
-            className="relative flex h-9 w-[70px] items-center rounded-full border border-[#d7b875]/35 bg-white/10 p-1 transition hover:border-[#d7b875]"
-          >
             <span
-              className={`absolute top-1 flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-white text-lg shadow-lg transition-all duration-300 ${
-                lang === "en" ? "left-1" : "left-[37px]"
+              className={`text-xs font-black transition ${
+                lang === "en" ? "text-[#d7b875]" : "text-white/45"
               }`}
             >
-              {lang === "en" ? "🇬🇧" : "🇫🇮"}
+              EN
             </span>
-          </button>
 
-          <span
-            className={`text-xs font-black transition ${
-              lang === "fi" ? "text-[#d7b875]" : "text-white/45"
-            }`}
-          >
-            FI
-          </span>
-        </div>
+            <button
+              type="button"
+              onClick={toggleLanguage}
+              aria-label="Toggle language"
+              className="relative flex h-9 w-[70px] items-center rounded-full border border-[#d7b875]/35 bg-white/10 p-1 transition hover:border-[#d7b875]"
+            >
+              <span
+                className={`absolute top-1 flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-white text-lg shadow-lg transition-all duration-300 ${
+                  lang === "en" ? "left-1" : "left-[37px]"
+                }`}
+              >
+                {lang === "en" ? "🇬🇧" : "🇫🇮"}
+              </span>
+            </button>
+
+            <span
+              className={`text-xs font-black transition ${
+                lang === "fi" ? "text-[#d7b875]" : "text-white/45"
+              }`}
+            >
+              FI
+            </span>
+          </div>
 
           <button
             type="button"
@@ -219,8 +243,6 @@ export default function Header() {
               </Link>
             ))}
 
-
-            
             <button
               type="button"
               onClick={() => {
@@ -232,34 +254,37 @@ export default function Header() {
               {t("cart")} ({totalQuantity})
             </button>
 
-
             <button
-            type="button"
-            onClick={toggleLanguage}
-            className="flex items-center justify-between rounded-lg px-4 py-3 text-sm font-bold text-white/90 hover:bg-white/5"
-          >
-            <span>Language</span>
+              type="button"
+              onClick={toggleLanguage}
+              className="flex items-center justify-between rounded-lg px-4 py-3 text-sm font-bold text-white/90 hover:bg-white/5"
+            >
+              <span>Language</span>
 
-            <span className="flex items-center gap-3">
-              <span className={lang === "en" ? "text-[#d7b875]" : "text-white/45"}>
-                EN
-              </span>
-
-              <span className="relative flex h-8 w-[62px] items-center rounded-full border border-[#d7b875]/35 bg-white/10 p-1">
+              <span className="flex items-center gap-3">
                 <span
-                  className={`absolute top-1 flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-white text-base shadow-lg transition-all duration-300 ${
-                    lang === "en" ? "left-1" : "left-[34px]"
-                  }`}
+                  className={lang === "en" ? "text-[#d7b875]" : "text-white/45"}
                 >
-                  {lang === "en" ? "🇬🇧" : "🇫🇮"}
+                  EN
+                </span>
+
+                <span className="relative flex h-8 w-[62px] items-center rounded-full border border-[#d7b875]/35 bg-white/10 p-1">
+                  <span
+                    className={`absolute top-1 flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-white text-base shadow-lg transition-all duration-300 ${
+                      lang === "en" ? "left-1" : "left-[34px]"
+                    }`}
+                  >
+                    {lang === "en" ? "🇬🇧" : "🇫🇮"}
+                  </span>
+                </span>
+
+                <span
+                  className={lang === "fi" ? "text-[#d7b875]" : "text-white/45"}
+                >
+                  FI
                 </span>
               </span>
-
-              <span className={lang === "fi" ? "text-[#d7b875]" : "text-white/45"}>
-                FI
-              </span>
-            </span>
-          </button>
+            </button>
 
             {user ? (
               <>
@@ -304,7 +329,6 @@ export default function Header() {
                 {t("loginSignup")}
               </Link>
             )}
-
           </nav>
         </div>
       )}

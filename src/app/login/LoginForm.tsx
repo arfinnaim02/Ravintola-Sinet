@@ -38,8 +38,9 @@ export default function LoginForm() {
         throw new Error(data.message || "Login failed.");
       }
 
-      router.push(next);
-      router.refresh();
+window.dispatchEvent(new Event("auth-changed"));
+router.push(next);
+router.refresh();
     } catch (err: any) {
       setError(err?.message || "Login failed.");
     } finally {
