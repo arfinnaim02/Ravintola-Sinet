@@ -21,20 +21,54 @@ export async function GET() {
   try {
     const prisma = await getPrisma();
 
-    const orders = await prisma.deliveryOrder.findMany({
+const orders = await prisma.deliveryOrder.findMany({
+  include: {
+    items: {
       include: {
-        items: {
-          include: {
-            addonSnapshots: true,
-          },
-        },
+        addonSnapshots: true,
       },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    },
+  },
+  orderBy: {
+    createdAt: "desc",
+  },
+});
 
-    return NextResponse.json({ success: true, orders });
+const safeOrders = orders.map((order) => ({
+  ...order,
+
+  createdAt: order.createdAt.toISOString(),
+
+  subtotal: Number(order.subtotal || 0),
+  deliveryFee: Number(order.deliveryFee || 0),
+  couponDiscount: Number(order.couponDiscount || 0),
+  total: Number(order.total || 0),
+
+  telegramMessageId: order.telegramMessageId
+    ? order.telegramMessageId.toString()
+    : null,
+
+  telegramLastActionAt: order.telegramLastActionAt
+    ? order.telegramLastActionAt.toISOString()
+    : null,
+
+  items: order.items.map((item) => ({
+    ...item,
+
+    unitPrice: Number(item.unitPrice || 0),
+    addonsTotal: Number(item.addonsTotal || 0),
+
+    addonSnapshots: item.addonSnapshots.map((addon) => ({
+      ...addon,
+      optionPrice: Number(addon.optionPrice || 0),
+    })),
+  })),
+}));
+
+return NextResponse.json({
+  success: true,
+  orders: safeOrders,
+});
   } catch (error: any) {
     return NextResponse.json(
       { success: false, message: error?.message || "Failed to load orders." },
