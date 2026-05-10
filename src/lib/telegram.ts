@@ -15,6 +15,9 @@ type TelegramOrder = {
   couponCode: string | null;
   couponDiscount: any;
   total: any;
+  telegramLastStatusSent?: string | null;
+  telegramLastActionBy?: string | null;
+  telegramLastActionAt?: Date | string | null;
   items: {
     name: string;
     qty: number;
@@ -41,11 +44,20 @@ const statusLabels: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
+const statusIcons: Record<string, string> = {
+  pending: "⏳",
+  accepted: "✅",
+  preparing: "👨‍🍳",
+  on_the_way: "🚗",
+  completed: "🏁",
+  cancelled: "❌",
+};
+
 function money(value: any) {
   return `€${Number(value || 0).toFixed(2)}`;
 }
 
-function escapeHtml(value: string) {
+function escapeHtml(value: any) {
   return String(value || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -75,6 +87,52 @@ function buildGoogleMapLink(order: TelegramOrder) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
     order.addressLabel || ""
   )}`;
+}
+
+function formatActionTime(value: Date | string | null | undefined) {
+  if (!value) return "";
+
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Helsinki",
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function getStatusLine(order: TelegramOrder) {
+  const icon = statusIcons[order.status] || "•";
+  const label = statusLabels[order.status] || order.status;
+
+  return `${icon} <b>${escapeHtml(label)}</b>`;
+}
+
+function getStatusHistoryText(order: TelegramOrder) {
+  if (!order.telegramLastActionAt && !order.telegramLastActionBy) return "";
+
+  const byText = order.telegramLastActionBy
+    ? ` by ${escapeHtml(order.telegramLastActionBy)}`
+    : "";
+
+  const timeText = order.telegramLastActionAt
+    ? ` at ${escapeHtml(formatActionTime(order.telegramLastActionAt))}`
+    : "";
+
+  return `\n<b>Last update:</b>${byText}${timeText}`;
+}
+
+function getButtonText(status: string, currentStatus: string) {
+  const icon = statusIcons[status] || "";
+  const label = statusLabels[status] || status;
+
+  if (status === currentStatus) {
+    return `✓ ${icon} ${label}`;
+  }
+
+  return `${icon} ${label}`;
 }
 
 export function buildTelegramOrderMessage(order: TelegramOrder) {
@@ -114,11 +172,13 @@ export function buildTelegramOrderMessage(order: TelegramOrder) {
     ? `\n<b>Extra:</b> ${escapeHtml(order.addressExtra)}`
     : "";
 
-  return `
-<b>New Delivery Order</b>
+  const historyText = getStatusHistoryText(order);
 
-<b>Order ID:</b> <code>${order.id}</code>
-<b>Status:</b> ${statusLabels[order.status] || order.status}
+  return `
+<b>🍽️ New Delivery Order</b>
+
+<b>Order ID:</b> <code>${escapeHtml(order.id)}</code>
+<b>Status:</b> ${getStatusLine(order)}${historyText}
 
 <b>Customer:</b> ${escapeHtml(order.customerName)}
 <b>Phone:</b> ${escapeHtml(order.customerPhone)}
@@ -129,7 +189,7 @@ export function buildTelegramOrderMessage(order: TelegramOrder) {
 <b>Distance:</b> ${Number(order.distanceKm || 0).toFixed(2)} km${noteText}
 
 <b>Items</b>
-${itemsText}
+${itemsText || "No items found."}
 
 <b>Subtotal:</b> ${money(order.subtotal)}
 <b>Delivery:</b> ${money(order.deliveryFee)}${couponText}
@@ -137,18 +197,35 @@ ${itemsText}
 `.trim();
 }
 
-function buildStatusKeyboard(orderId: string) {
+function buildStatusKeyboard(orderId: string, currentStatus = "pending") {
   return {
     inline_keyboard: [
       [
-        { text: "Accept", callback_data: `order_status:accepted:${orderId}` },
-        { text: "Prepare", callback_data: `order_status:preparing:${orderId}` },
+        {
+          text: getButtonText("accepted", currentStatus),
+          callback_data: `order_status:accepted:${orderId}`,
+        },
+        {
+          text: getButtonText("preparing", currentStatus),
+          callback_data: `order_status:preparing:${orderId}`,
+        },
       ],
       [
-        { text: "On the way", callback_data: `order_status:on_the_way:${orderId}` },
-        { text: "Completed", callback_data: `order_status:completed:${orderId}` },
+        {
+          text: getButtonText("on_the_way", currentStatus),
+          callback_data: `order_status:on_the_way:${orderId}`,
+        },
+        {
+          text: getButtonText("completed", currentStatus),
+          callback_data: `order_status:completed:${orderId}`,
+        },
       ],
-      [{ text: "Cancel", callback_data: `order_status:cancelled:${orderId}` }],
+      [
+        {
+          text: getButtonText("cancelled", currentStatus),
+          callback_data: `order_status:cancelled:${orderId}`,
+        },
+      ],
     ],
   };
 }
@@ -166,7 +243,7 @@ export async function sendTelegramOrder(order: TelegramOrder) {
         text: buildTelegramOrderMessage(order),
         parse_mode: "HTML",
         disable_web_page_preview: true,
-        reply_markup: buildStatusKeyboard(order.id),
+        reply_markup: buildStatusKeyboard(order.id, order.status),
       }),
     }
   );
@@ -226,7 +303,7 @@ export async function editTelegramOrderMessage(orderId: string) {
         }),
         parse_mode: "HTML",
         disable_web_page_preview: true,
-        reply_markup: buildStatusKeyboard(order.id),
+        reply_markup: buildStatusKeyboard(order.id, order.status),
       }),
     }
   );
@@ -248,7 +325,10 @@ export async function editTelegramOrderMessage(orderId: string) {
   }
 }
 
-export async function answerTelegramCallback(callbackQueryId: string, text: string) {
+export async function answerTelegramCallback(
+  callbackQueryId: string,
+  text: string
+) {
   if (!getBotToken()) return;
 
   await fetch(`https://api.telegram.org/bot${getBotToken()}/answerCallbackQuery`, {
