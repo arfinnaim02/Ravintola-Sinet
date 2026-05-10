@@ -3,31 +3,28 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
+import { uploadImageToCloudinary } from "../../../../lib/cloudinary";
 
 async function getPrisma() {
   const { prisma } = await import("../../../../lib/prisma");
   return prisma;
 }
 
-const uploadDir = path.join(process.cwd(), "public", "uploaded-menu-items");
+function safeNumber(value: FormDataEntryValue | null) {
+  return Number(value || 0);
+}
 
-async function saveImage(file: File | null) {
-  if (!file || file.size === 0) return "";
+function safeString(value: FormDataEntryValue | null) {
+  return String(value || "").trim();
+}
 
-  await mkdir(uploadDir, { recursive: true });
-
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-
-  const extension = file.name.split(".").pop() || "webp";
-  const fileName = `menu-${Date.now()}.${extension}`;
-  const filePath = path.join(uploadDir, fileName);
-
-  await writeFile(filePath, buffer);
-
-  return `/uploaded-menu-items/${fileName}`;
+function serializeMenuItem(item: any) {
+  return {
+    ...item,
+    price: Number(item.price || 0),
+    createdAt: item.createdAt ? item.createdAt.toISOString() : null,
+    updatedAt: item.updatedAt ? item.updatedAt.toISOString() : null,
+  };
 }
 
 export async function GET() {
@@ -57,7 +54,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      items,
+      items: items.map(serializeMenuItem),
       categories,
     });
   } catch (error: any) {
@@ -76,9 +73,9 @@ export async function POST(request: Request) {
     const prisma = await getPrisma();
     const formData = await request.formData();
 
-    const name = String(formData.get("name") || "").trim();
-    const categoryId = String(formData.get("categoryId") || "");
-    const price = Number(formData.get("price") || 0);
+    const name = safeString(formData.get("name"));
+    const categoryId = safeString(formData.get("categoryId"));
+    const price = safeNumber(formData.get("price"));
 
     if (!name || !categoryId || price <= 0) {
       return NextResponse.json(
@@ -88,7 +85,7 @@ export async function POST(request: Request) {
     }
 
     const imageFile = formData.get("imageFile") as File | null;
-    const image = await saveImage(imageFile);
+    const image = await uploadImageToCloudinary(imageFile, "menu-items");
 
     const item = await prisma.menuItem.create({
       data: {
@@ -96,14 +93,17 @@ export async function POST(request: Request) {
         categoryId,
         price,
         image: image || "",
-        description: String(formData.get("description") || ""),
-        tags: String(formData.get("tags") || ""),
-        allergens: String(formData.get("allergens") || ""),
-        status: String(formData.get("status") || "active"),
+        description: safeString(formData.get("description")),
+        tags: safeString(formData.get("tags")),
+        allergens: safeString(formData.get("allergens")),
+        status: safeString(formData.get("status")) || "active",
       },
     });
 
-    return NextResponse.json({ success: true, item });
+    return NextResponse.json({
+      success: true,
+      item: serializeMenuItem(item),
+    });
   } catch (error: any) {
     return NextResponse.json(
       {
@@ -120,10 +120,10 @@ export async function PATCH(request: Request) {
     const prisma = await getPrisma();
     const formData = await request.formData();
 
-    const id = String(formData.get("id") || "");
-    const name = String(formData.get("name") || "").trim();
-    const categoryId = String(formData.get("categoryId") || "");
-    const price = Number(formData.get("price") || 0);
+    const id = safeString(formData.get("id"));
+    const name = safeString(formData.get("name"));
+    const categoryId = safeString(formData.get("categoryId"));
+    const price = safeNumber(formData.get("price"));
 
     if (!id || !name || !categoryId || price <= 0) {
       return NextResponse.json(
@@ -133,9 +133,8 @@ export async function PATCH(request: Request) {
     }
 
     const imageFile = formData.get("imageFile") as File | null;
-    const newImage = await saveImage(imageFile);
-
-    const currentImage = String(formData.get("currentImage") || "");
+    const currentImage = safeString(formData.get("currentImage"));
+    const newImage = await uploadImageToCloudinary(imageFile, "menu-items");
 
     const item = await prisma.menuItem.update({
       where: { id },
@@ -144,14 +143,17 @@ export async function PATCH(request: Request) {
         categoryId,
         price,
         image: newImage || currentImage || "",
-        description: String(formData.get("description") || ""),
-        tags: String(formData.get("tags") || ""),
-        allergens: String(formData.get("allergens") || ""),
-        status: String(formData.get("status") || "active"),
+        description: safeString(formData.get("description")),
+        tags: safeString(formData.get("tags")),
+        allergens: safeString(formData.get("allergens")),
+        status: safeString(formData.get("status")) || "active",
       },
     });
 
-    return NextResponse.json({ success: true, item });
+    return NextResponse.json({
+      success: true,
+      item: serializeMenuItem(item),
+    });
   } catch (error: any) {
     return NextResponse.json(
       {
