@@ -4,24 +4,13 @@ const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
 };
 
-function getDatabaseUrl() {
-  const url = process.env.DATABASE_URL;
-
-  if (!url) {
-    return "postgresql://placeholder:placeholder@localhost:5432/placeholder";
-  }
-
-  return url;
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is missing. Add it in Vercel Environment Variables.");
 }
 
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    datasources: {
-      db: {
-        url: getDatabaseUrl(),
-      },
-    },
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
