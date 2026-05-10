@@ -7,6 +7,8 @@ type TelegramOrder = {
   paymentMethod: string;
   addressLabel: string;
   addressExtra: string;
+  lat?: any;
+  lng?: any;
   distanceKm: number;
   subtotal: any;
   deliveryFee: any;
@@ -62,7 +64,22 @@ export function isTelegramConfigured() {
   return Boolean(getBotToken() && getAdminChatId());
 }
 
+function buildGoogleMapLink(order: TelegramOrder) {
+  const lat = Number(order.lat || 0);
+  const lng = Number(order.lng || 0);
+
+  if (lat && lng) {
+    return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  }
+
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    order.addressLabel || ""
+  )}`;
+}
+
 export function buildTelegramOrderMessage(order: TelegramOrder) {
+  const mapLink = buildGoogleMapLink(order);
+
   const itemsText = order.items
     .map((item) => {
       const addons =
@@ -108,6 +125,7 @@ export function buildTelegramOrderMessage(order: TelegramOrder) {
 <b>Payment:</b> ${escapeHtml(order.paymentMethod)}
 
 <b>Address:</b> ${escapeHtml(order.addressLabel)}${extraText}
+<b>Map:</b> <a href="${mapLink}">Open in Google Maps</a>
 <b>Distance:</b> ${Number(order.distanceKm || 0).toFixed(2)} km${noteText}
 
 <b>Items</b>
@@ -127,14 +145,8 @@ function buildStatusKeyboard(orderId: string) {
         { text: "Prepare", callback_data: `order_status:preparing:${orderId}` },
       ],
       [
-        {
-          text: "On the way",
-          callback_data: `order_status:on_the_way:${orderId}`,
-        },
-        {
-          text: "Completed",
-          callback_data: `order_status:completed:${orderId}`,
-        },
+        { text: "On the way", callback_data: `order_status:on_the_way:${orderId}` },
+        { text: "Completed", callback_data: `order_status:completed:${orderId}` },
       ],
       [{ text: "Cancel", callback_data: `order_status:cancelled:${orderId}` }],
     ],
@@ -153,6 +165,7 @@ export async function sendTelegramOrder(order: TelegramOrder) {
         chat_id: getAdminChatId(),
         text: buildTelegramOrderMessage(order),
         parse_mode: "HTML",
+        disable_web_page_preview: true,
         reply_markup: buildStatusKeyboard(order.id),
       }),
     }
@@ -212,6 +225,7 @@ export async function editTelegramOrderMessage(orderId: string) {
           distanceKm: Number(order.distanceKm || 0),
         }),
         parse_mode: "HTML",
+        disable_web_page_preview: true,
         reply_markup: buildStatusKeyboard(order.id),
       }),
     }
