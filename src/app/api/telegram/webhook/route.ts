@@ -38,13 +38,17 @@ function isWebhookAuthorized(request: Request) {
   return headerSecret === secret || querySecret === secret;
 }
 
-export async function POST(request: Request) {
-  try {
-    const prisma = await getPrisma();
-    const { answerTelegramCallback, editTelegramOrderMessage } =
-      await getTelegram();
-    const { checkAndGenerateLoyaltyReward } = await getLoyalty();
+export async function GET() {
+  return NextResponse.json({
+    success: true,
+    message: "Telegram webhook is active.",
+  });
+}
 
+export async function POST(request: Request) {
+  let callbackId = "";
+
+  try {
     if (!isWebhookAuthorized(request)) {
       return NextResponse.json(
         { success: false, message: "Unauthorized webhook." },
@@ -52,18 +56,26 @@ export async function POST(request: Request) {
       );
     }
 
+    const prisma = await getPrisma();
+    const { answerTelegramCallback, editTelegramOrderMessage } =
+      await getTelegram();
+    const { checkAndGenerateLoyaltyReward } = await getLoyalty();
+
     const update = await request.json();
     const callback = update.callback_query;
 
     if (!callback?.data || !callback?.id) {
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, message: "No callback query." });
     }
+
+    callbackId = callback.id;
 
     const data = String(callback.data);
     const parts = data.split(":");
 
     if (parts[0] !== "order_status") {
-      return NextResponse.json({ success: true });
+      await answerTelegramCallback(callback.id, "Unknown action.");
+      return NextResponse.json({ success: true, message: "Unknown action." });
     }
 
     const status = parts[1];
@@ -71,7 +83,11 @@ export async function POST(request: Request) {
 
     if (!allowedStatuses.includes(status) || !orderId) {
       await answerTelegramCallback(callback.id, "Invalid action.");
-      return NextResponse.json({ success: true });
+      return NextResponse.json({
+        success: true,
+        message: "Invalid action.",
+        data,
+      });
     }
 
     const existingOrder = await prisma.deliveryOrder.findUnique({
@@ -85,7 +101,11 @@ export async function POST(request: Request) {
 
     if (!existingOrder) {
       await answerTelegramCallback(callback.id, "Order not found.");
-      return NextResponse.json({ success: true });
+      return NextResponse.json({
+        success: true,
+        message: "Order not found.",
+        orderId,
+      });
     }
 
     await prisma.deliveryOrder.update({
@@ -110,11 +130,27 @@ export async function POST(request: Request) {
     }
 
     await editTelegramOrderMessage(orderId);
-    await answerTelegramCallback(callback.id, `Order marked as ${status}.`);
 
-    return NextResponse.json({ success: true });
+    await answerTelegramCallback(
+      callback.id,
+      `Order marked as ${status.replaceAll("_", " ")}.`
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: "Order status updated.",
+      orderId,
+      status,
+    });
   } catch (error: any) {
     console.error("Telegram webhook error:", error);
+
+    try {
+      if (callbackId) {
+        const { answerTelegramCallback } = await getTelegram();
+        await answerTelegramCallback(callbackId, "Action failed. Check server logs.");
+      }
+    } catch {}
 
     return NextResponse.json(
       {
