@@ -1,5 +1,6 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "../../lib/auth";
