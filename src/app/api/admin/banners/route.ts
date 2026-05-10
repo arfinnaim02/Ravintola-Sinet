@@ -3,31 +3,31 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
+import { uploadImageToCloudinary } from "../../../../lib/cloudinary";
 
 async function getPrisma() {
   const { prisma } = await import("../../../../lib/prisma");
   return prisma;
 }
 
-const uploadDir = path.join(process.cwd(), "public", "uploaded-banners");
+function safeString(value: FormDataEntryValue | null) {
+  return String(value || "").trim();
+}
 
-async function saveImage(file: File | null, prefix: string) {
-  if (!file || file.size === 0) return "";
+function safeNumber(value: FormDataEntryValue | null) {
+  return Number(value || 0);
+}
 
-  await mkdir(uploadDir, { recursive: true });
+function safeBoolean(value: FormDataEntryValue | null) {
+  return String(value) === "true";
+}
 
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-
-  const extension = file.name.split(".").pop() || "webp";
-  const fileName = `${prefix}-${Date.now()}.${extension}`;
-  const filePath = path.join(uploadDir, fileName);
-
-  await writeFile(filePath, buffer);
-
-  return `/uploaded-banners/${fileName}`;
+function serializeBanner(banner: any) {
+  return {
+    ...banner,
+    createdAt: banner.createdAt ? banner.createdAt.toISOString() : null,
+    updatedAt: banner.updatedAt ? banner.updatedAt.toISOString() : null,
+  };
 }
 
 export async function GET() {
@@ -38,7 +38,10 @@ export async function GET() {
       orderBy: [{ order: "asc" }, { createdAt: "desc" }],
     });
 
-    return NextResponse.json({ success: true, banners });
+    return NextResponse.json({
+      success: true,
+      banners: banners.map(serializeBanner),
+    });
   } catch (error: any) {
     return NextResponse.json(
       {
@@ -53,14 +56,16 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const prisma = await getPrisma();
-
     const formData = await request.formData();
 
     const desktopFile = formData.get("image") as File | null;
     const mobileFile = formData.get("mobileImage") as File | null;
 
-    const image = await saveImage(desktopFile, "desktop");
-    const mobileImage = await saveImage(mobileFile, "mobile");
+    const image = await uploadImageToCloudinary(desktopFile, "banners/desktop");
+    const mobileImage = await uploadImageToCloudinary(
+      mobileFile,
+      "banners/mobile"
+    );
 
     if (!image) {
       return NextResponse.json(
@@ -76,17 +81,20 @@ export async function POST(request: Request) {
       data: {
         image,
         mobileImage: mobileImage || null,
-        eyebrow: String(formData.get("eyebrow") || ""),
-        title: String(formData.get("title") || ""),
-        subtitle: String(formData.get("subtitle") || ""),
-        buttonText: String(formData.get("buttonText") || ""),
-        buttonUrl: String(formData.get("buttonUrl") || ""),
-        order: Number(formData.get("order") || 0),
-        isActive: String(formData.get("isActive")) === "true",
+        eyebrow: safeString(formData.get("eyebrow")),
+        title: safeString(formData.get("title")),
+        subtitle: safeString(formData.get("subtitle")),
+        buttonText: safeString(formData.get("buttonText")),
+        buttonUrl: safeString(formData.get("buttonUrl")),
+        order: safeNumber(formData.get("order")),
+        isActive: safeBoolean(formData.get("isActive")),
       },
     });
 
-    return NextResponse.json({ success: true, banner });
+    return NextResponse.json({
+      success: true,
+      banner: serializeBanner(banner),
+    });
   } catch (error: any) {
     return NextResponse.json(
       {
@@ -101,10 +109,9 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const prisma = await getPrisma();
-
     const formData = await request.formData();
 
-    const id = String(formData.get("id") || "");
+    const id = safeString(formData.get("id"));
 
     if (!id) {
       return NextResponse.json(
@@ -119,25 +126,35 @@ export async function PATCH(request: Request) {
     const desktopFile = formData.get("image") as File | null;
     const mobileFile = formData.get("mobileImage") as File | null;
 
-    const newImage = await saveImage(desktopFile, "desktop");
-    const newMobileImage = await saveImage(mobileFile, "mobile");
+    const newImage = await uploadImageToCloudinary(
+      desktopFile,
+      "banners/desktop"
+    );
+
+    const newMobileImage = await uploadImageToCloudinary(
+      mobileFile,
+      "banners/mobile"
+    );
 
     const banner = await prisma.heroBanner.update({
       where: { id },
       data: {
         ...(newImage ? { image: newImage } : {}),
         ...(newMobileImage ? { mobileImage: newMobileImage } : {}),
-        eyebrow: String(formData.get("eyebrow") || ""),
-        title: String(formData.get("title") || ""),
-        subtitle: String(formData.get("subtitle") || ""),
-        buttonText: String(formData.get("buttonText") || ""),
-        buttonUrl: String(formData.get("buttonUrl") || ""),
-        order: Number(formData.get("order") || 0),
-        isActive: String(formData.get("isActive")) === "true",
+        eyebrow: safeString(formData.get("eyebrow")),
+        title: safeString(formData.get("title")),
+        subtitle: safeString(formData.get("subtitle")),
+        buttonText: safeString(formData.get("buttonText")),
+        buttonUrl: safeString(formData.get("buttonUrl")),
+        order: safeNumber(formData.get("order")),
+        isActive: safeBoolean(formData.get("isActive")),
       },
     });
 
-    return NextResponse.json({ success: true, banner });
+    return NextResponse.json({
+      success: true,
+      banner: serializeBanner(banner),
+    });
   } catch (error: any) {
     return NextResponse.json(
       {
@@ -152,8 +169,8 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const prisma = await getPrisma();
-
     const body = await request.json();
+
     const id = String(body.id || "");
 
     if (!id) {
