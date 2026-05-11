@@ -1,6 +1,7 @@
 import "../styles/globals.css";
 import type { Metadata } from "next";
 import { Allura, Playfair_Display, Inter } from "next/font/google";
+import { GoogleTagManager } from "@next/third-parties/google";
 import SiteShell from "../components/SiteShell";
 import { LanguageProvider } from "../i18n/LanguageContext";
 
@@ -34,6 +35,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body
         className={`${allura.variable} ${playfair.variable} ${inter.variable} flex min-h-screen flex-col bg-[#f4eee4] text-[#3b1f18] antialiased`}
       >
+        {process.env.NEXT_PUBLIC_GTM_ID && (
+          <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID} />
+        )}
+
         <LanguageProvider>
           <SiteShell>{children}</SiteShell>
         </LanguageProvider>

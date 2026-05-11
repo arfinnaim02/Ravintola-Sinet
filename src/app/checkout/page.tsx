@@ -6,6 +6,7 @@ import CartSummary from "../../components/CartSummary";
 import { useCart } from "../../contexts/CartContext";
 import DeliveryLocationModal from "../../components/DeliveryLocationModal";
 import { useLanguage } from "../../i18n/LanguageContext";
+import { pushDataLayer } from "../../lib/gtm";
 const libraries: "places"[] = ["places"];
 type SavedAddress = {
   id: string;
@@ -356,8 +357,23 @@ if (extraInput) {
     setStatus(null);
     setOrderId(null);
 
+    pushDataLayer("begin_checkout", {
+      ecommerce: {
+        currency: "EUR",
+        value: Number(finalTotal || 0),
+        coupon: appliedCoupon?.code || "",
+        items: cart.map((item) => ({
+          item_id: item.id,
+          item_name: item.name,
+          item_category: item.category || "Menu",
+          price: Number(item.price || 0),
+          quantity: Number(item.quantity || 1),
+        })),
+      },
+    });
+
     try {
-      const response = await fetch("/api/send-order", {
+      const response = await fetch("/api/send-orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -395,6 +411,23 @@ if (extraInput) {
       if (!response.ok || !data.success) {
         throw new Error(data.message || t("checkoutOrderProblem"));
       }
+
+      pushDataLayer("purchase", {
+        ecommerce: {
+          transaction_id: data.orderId,
+          currency: "EUR",
+          value: Number(data.total || finalTotal || 0),
+          shipping: Number(data.deliveryFee || deliveryFee || 0),
+          coupon: appliedCoupon?.code || "",
+          items: cart.map((item) => ({
+            item_id: item.id,
+            item_name: item.name,
+            item_category: item.category || "Menu",
+            price: Number(item.price || 0),
+            quantity: Number(item.quantity || 1),
+          })),
+        },
+      });
 
       setStatus(t("checkoutOrderSuccess"));
       setOrderId(data.orderId);
