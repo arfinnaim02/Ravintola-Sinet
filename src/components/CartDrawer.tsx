@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useCart } from "../contexts/CartContext";
 import { useLanguage } from "../i18n/LanguageContext";
-
+import { pushDataLayer } from "../lib/gtm";
+import { useEffect } from "react";
 export default function CartDrawer() {
   const { t } = useLanguage();
 
@@ -16,7 +17,23 @@ export default function CartDrawer() {
     totalPrice,
     totalQuantity,
   } = useCart();
+    useEffect(() => {
+      if (!isCartOpen) return;
 
+      pushDataLayer("view_cart", {
+        ecommerce: {
+          currency: "EUR",
+          value: Number(totalPrice || 0),
+          items: cart.map((item) => ({
+            item_id: item.id,
+            item_name: item.name,
+            item_category: item.category || "Menu",
+            price: Number(item.price || 0),
+            quantity: Number(item.quantity || 1),
+          })),
+        },
+      });
+    }, [isCartOpen]);
   if (!isCartOpen) return null;
 
   return (
@@ -171,7 +188,25 @@ export default function CartDrawer() {
                           <button
                             type="button"
                             aria-label={t("cartRemoveItem")}
-                            onClick={() => removeItem(identifier)}
+                            onClick={() => {
+                              pushDataLayer("remove_from_cart", {
+                                ecommerce: {
+                                  currency: "EUR",
+                                  value: Number(lineTotal || 0),
+                                  items: [
+                                    {
+                                      item_id: item.id,
+                                      item_name: item.name,
+                                      item_category: item.category || "Menu",
+                                      price: Number(unitPrice || 0),
+                                      quantity: Number(item.quantity || 1),
+                                    },
+                                  ],
+                                },
+                              });
+
+                              removeItem(identifier);
+                            }}
                             className="text-xs font-black uppercase tracking-[0.15em] text-red-600 underline underline-offset-4"
                           >
                             {t("remove")}

@@ -6,6 +6,7 @@ import {
   useJsApiLoader,
 } from "@react-google-maps/api";
 import { useCallback, useState } from "react";
+import { pushDataLayer } from "../lib/gtm";
 
 const libraries: "places"[] = ["places"];
 
@@ -136,7 +137,7 @@ export default function DeliveryLocationModal({
         throw new Error(data.message || "Delivery calculation failed.");
       }
 
-      onConfirm({
+      const deliveryData = {
         addressLabel: address,
         lat: Number(data.lat || mapCenter.lat),
         lng: Number(data.lng || mapCenter.lng),
@@ -145,8 +146,18 @@ export default function DeliveryLocationModal({
         deliveryFee: Number(data.deliveryFee || 0),
         promoApplied: Boolean(data.promoApplied),
         promoTitle: data.promoTitle || "",
+      };
+
+      pushDataLayer("delivery_location_selected", {
+        address_label: deliveryData.addressLabel,
+        distance_km: deliveryData.distanceKm,
+        duration_text: deliveryData.durationText,
+        delivery_fee: deliveryData.deliveryFee,
+        promo_applied: deliveryData.promoApplied,
+        promo_title: deliveryData.promoTitle,
       });
 
+      onConfirm(deliveryData);
       onClose();
     } catch (error: any) {
       const errorMessage = error?.message || "Could not calculate delivery.";

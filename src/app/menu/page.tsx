@@ -6,6 +6,7 @@ import MenuItemPreviewModal from "../../components/MenuItemPreviewModal";
 import MenuCouponHero from "../../components/MenuCouponHero";
 import { MenuItem } from "../../contexts/CartContext";
 import { useLanguage } from "../../i18n/LanguageContext";
+import { pushDataLayer } from "../../lib/gtm";
 
 type CategoryFromApi = {
   id: string;
@@ -87,6 +88,9 @@ export default function MenuPage() {
   const categoryButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
+    pushDataLayer("view_menu", {
+      page: "menu",
+    });
     async function fetchItems() {
       try {
         const res = await fetch("/api/menu", { cache: "no-store" });
@@ -220,6 +224,9 @@ export default function MenuPage() {
   };
 
   const scrollToCategory = (slug: string) => {
+    pushDataLayer("menu_category_select", {
+      category_slug: slug,
+    });
     const section = document.getElementById(`category-${slug}`);
 
     if (section) {

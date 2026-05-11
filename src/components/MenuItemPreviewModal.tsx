@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { MenuItem, MenuItemAddon, useCart } from "../contexts/CartContext";
 import { useLanguage } from "../i18n/LanguageContext";
+import { pushDataLayer } from "../lib/gtm";
 
 type AddonOption = {
   id: string;
@@ -87,9 +88,25 @@ export default function MenuItemPreviewModal({ itemId, open, onClose }: Props) {
           throw new Error(t("failedToLoadItemPreview"));
         }
 
-        const data = await res.json();
-        setItem(data);
-        setSelectedOptions({});
+          const data = await res.json();
+          setItem(data);
+          setSelectedOptions({});
+
+          pushDataLayer("view_item", {
+            ecommerce: {
+              currency: "EUR",
+              value: Number(data.price || 0),
+              items: [
+                {
+                  item_id: data.id,
+                  item_name: data.name,
+                  item_category: data.category?.slug || data.category?.name || "Menu",
+                  price: Number(data.price || 0),
+                  quantity: 1,
+                },
+              ],
+            },
+          });
       } catch (err: any) {
         setError(err?.message || t("failedToLoadItemPreview"));
       } finally {
@@ -209,6 +226,23 @@ export default function MenuItemPreviewModal({ itemId, open, onClose }: Props) {
     };
 
     addItem(cartItem, selectedAddons);
+
+    pushDataLayer("add_to_cart", {
+      ecommerce: {
+        currency: "EUR",
+        value: Number(totalPrice || 0),
+        items: [
+          {
+            item_id: item.id,
+            item_name: item.name,
+            item_category: item.category?.slug || item.category?.name || "Menu",
+            price: Number(totalPrice || 0),
+            quantity: 1,
+          },
+        ],
+      },
+    });
+
     onClose();
   };
 
