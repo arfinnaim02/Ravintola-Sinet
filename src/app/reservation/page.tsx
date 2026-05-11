@@ -22,34 +22,125 @@ type MenuItemFromApi = {
   category?: CategoryFromApi | null;
 };
 
-const timeSlots = [
-  "10:00",
-  "10:30",
-  "11:00",
-  "11:30",
-  "12:00",
-  "12:30",
-  "13:00",
-  "13:30",
-  "14:00",
-  "14:30",
-  "15:00",
-  "15:30",
-  "16:00",
-  "16:30",
-  "17:00",
-  "17:30",
-  "18:00",
-  "18:30",
-  "19:00",
-  "19:30",
-  "20:00",
-  "20:30",
-  "21:00",
+type TableOption = {
+  id: number;
+  label: string;
+  capacity: number;
+  zone: string;
+  shape: "round" | "square" | "wide";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+const timeGroups = [
+  {
+    title: "Lunch",
+    subtitle: "10:00 - 14:30",
+    slots: [
+      "10:00",
+      "10:30",
+      "11:00",
+      "11:30",
+      "12:00",
+      "12:30",
+      "13:00",
+      "13:30",
+      "14:00",
+      "14:30",
+    ],
+  },
+  {
+    title: "Afternoon",
+    subtitle: "15:00 - 17:30",
+    slots: ["15:00", "15:30", "16:00", "16:30", "17:00", "17:30"],
+  },
+  {
+    title: "Evening",
+    subtitle: "18:00 - 21:00",
+    slots: ["18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00"],
+  },
+];
+
+const tableOptions: TableOption[] = [
+  { id: 1, label: "T1", capacity: 4, zone: "Window", shape: "round", x: 42, y: 15, w: 12, h: 12 },
+  { id: 2, label: "T2", capacity: 4, zone: "Window", shape: "round", x: 62, y: 15, w: 12, h: 12 },
+  { id: 3, label: "T3", capacity: 4, zone: "Window", shape: "round", x: 83, y: 15, w: 12, h: 12 },
+  { id: 4, label: "T4", capacity: 4, zone: "Left Hall", shape: "round", x: 12, y: 36, w: 12, h: 12 },
+  { id: 5, label: "T5", capacity: 4, zone: "Left Hall", shape: "round", x: 13, y: 58, w: 12, h: 12 },
+  { id: 6, label: "T6", capacity: 8, zone: "Main Hall", shape: "wide", x: 57, y: 42, w: 24, h: 10 },
+  { id: 7, label: "T7", capacity: 4, zone: "Right Hall", shape: "square", x: 83, y: 42, w: 12, h: 10 },
+  { id: 8, label: "T8", capacity: 4, zone: "Right Hall", shape: "square", x: 63, y: 62, w: 12, h: 10 },
+  { id: 9, label: "T9", capacity: 4, zone: "Right Hall", shape: "square", x: 84, y: 62, w: 12, h: 10 },
+  { id: 10, label: "T10", capacity: 4, zone: "Right Hall", shape: "square", x: 63, y: 80, w: 12, h: 10 },
+  { id: 11, label: "T11", capacity: 4, zone: "Right Hall", shape: "square", x: 84, y: 80, w: 12, h: 10 },
+  { id: 12, label: "T12", capacity: 4, zone: "Quiet Corner", shape: "square", x: 29, y: 69, w: 12, h: 10 },
 ];
 
 function todayDate() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function formatDisplayDate(value: string) {
+  if (!value) return "Not selected";
+
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+  }).format(new Date(`${value}T12:00:00`));
+}
+
+function getTableShapeClass(shape: TableOption["shape"]) {
+  if (shape === "round") return "rounded-full";
+  if (shape === "wide") return "rounded-xl";
+  return "rounded-lg";
+}
+
+function renderChairs(table: TableOption, selected: boolean) {
+  const chairClass = selected
+    ? "border-[#d7b875] bg-[#d7b875]"
+    : "border-[#0f3d2e] bg-[#fffaf3]";
+
+  if (table.shape === "wide") {
+    return (
+      <>
+        {[16, 34, 52, 70].map((left) => (
+          <span
+            key={`top-${left}`}
+            className={`absolute -top-3 h-3 w-3 rounded-sm border ${chairClass}`}
+            style={{ left: `${left}%` }}
+          />
+        ))}
+
+        {[16, 34, 52, 70].map((left) => (
+          <span
+            key={`bottom-${left}`}
+            className={`absolute -bottom-3 h-3 w-3 rounded-sm border ${chairClass}`}
+            style={{ left: `${left}%` }}
+          />
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <span
+        className={`absolute -top-3 left-[20%] h-3 w-3 rounded-sm border ${chairClass}`}
+      />
+      <span
+        className={`absolute -top-3 right-[20%] h-3 w-3 rounded-sm border ${chairClass}`}
+      />
+      <span
+        className={`absolute -bottom-3 left-[20%] h-3 w-3 rounded-sm border ${chairClass}`}
+      />
+      <span
+        className={`absolute -bottom-3 right-[20%] h-3 w-3 rounded-sm border ${chairClass}`}
+      />
+    </>
+  );
 }
 
 export default function ReservationPage() {
@@ -97,6 +188,10 @@ export default function ReservationPage() {
   const tablesNeeded = useMemo(() => {
     return Math.max(1, Math.ceil(partySize / 4));
   }, [partySize]);
+
+  const selectedTable = useMemo(() => {
+    return tableOptions.find((table) => String(table.id) === preferredTable);
+  }, [preferredTable]);
 
   const selectedItemsTotal = useMemo(() => {
     return selectedItems.reduce(
@@ -338,7 +433,7 @@ export default function ReservationPage() {
                       <div className="space-y-3">
                         {selectedItems.map((item) => (
                           <div
-                            key={item.id}
+                            key={item.reservationKey}
                             className="rounded-2xl border border-[#eadfce] bg-[#fffaf3] p-3"
                           >
                             <div className="flex justify-between gap-3">
@@ -349,28 +444,6 @@ export default function ReservationPage() {
                                 <p className="mt-1 text-xs text-[#7b6255]">
                                   €{item.unitPrice.toFixed(2)} {t("each")}
                                 </p>
-
-                                {item.addons.length > 0 && (
-                                  <div className="mt-2 space-y-1 rounded-xl bg-white px-3 py-2">
-                                    {item.addons.map((addon) => (
-                                      <div
-                                        key={`${item.reservationKey}-${addon.optionId}`}
-                                        className="flex justify-between gap-3 text-[11px] text-[#7b6255]"
-                                      >
-                                        <span>
-                                          {addon.groupName}:{" "}
-                                          <strong>{addon.optionName}</strong>
-                                        </span>
-
-                                        <span className="font-bold">
-                                          {addon.optionPrice > 0
-                                            ? `+€${addon.optionPrice.toFixed(2)}`
-                                            : t("free")}
-                                        </span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
                               </div>
 
                               <button
@@ -451,32 +524,35 @@ export default function ReservationPage() {
         </div>
       )}
 
-      <section className="bg-[#1b0e0a] px-4 py-16 text-center text-white">
-        <p className="text-[10px] font-black uppercase tracking-[0.45em] text-[#d7b875] sm:text-xs">
-          Ravintola Sinet
-        </p>
-
-        <h1 className="mt-4 font-script text-[78px] leading-none sm:text-[112px]">
-          {t("reservation")}
-        </h1>
-
-        <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-white/75 sm:text-base">
-          {t("reservationHeroText")}
-        </p>
-      </section>
-
-      <section className="sinet-container grid gap-8 py-10 lg:grid-cols-[0.85fr_1.15fr] lg:py-14">
-        <aside className="rounded-3xl border border-[#e0d3bf] bg-white p-6 shadow-xl shadow-[#3b1f18]/10">
-          <p className="text-[10px] font-black uppercase tracking-[0.35em] text-[#b09876]">
-            {t("bookingDetails")}
+      <section className="relative overflow-hidden bg-[#1b0e0a] px-4 py-16 text-center text-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#6b3a28_0%,transparent_38%),linear-gradient(135deg,#1b0e0a,#3b1f18)] opacity-95" />
+        <div className="relative mx-auto max-w-4xl">
+          <p className="text-[10px] font-black uppercase tracking-[0.45em] text-[#d7b875] sm:text-xs">
+            Ravintola Sinet
           </p>
 
-          <h2 className="mt-2 font-display text-3xl font-black text-[#3b1f18]">
-            {t("chooseDateTime")}
-          </h2>
+          <h1 className="mt-4 font-script text-[78px] leading-none sm:text-[112px]">
+            {t("reservation")}
+          </h1>
 
-          <div className="mt-6 space-y-5">
-            <div>
+          <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-white/75 sm:text-base">
+            {t("reservationHeroText")}
+          </p>
+        </div>
+      </section>
+
+      <section className="sinet-container grid gap-8 py-10 xl:grid-cols-[0.95fr_1.05fr] xl:py-14">
+        <aside className="space-y-6">
+          <div className="rounded-3xl border border-[#e0d3bf] bg-white p-6 shadow-xl shadow-[#3b1f18]/10">
+            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-[#b09876]">
+              Step 01 / Date
+            </p>
+
+            <h2 className="mt-2 font-display text-3xl font-black text-[#3b1f18]">
+              Choose your visit
+            </h2>
+
+            <div className="mt-6">
               <label className="mb-2 block text-sm font-black text-[#3b1f18]">
                 {t("date")}
               </label>
@@ -488,67 +564,358 @@ export default function ReservationPage() {
                 className="w-full rounded-2xl border border-[#d8c9ac] bg-[#fffaf3] px-4 py-3 text-sm outline-none focus:border-[#c9a45c]"
               />
             </div>
+          </div>
 
-            <div>
-              <label className="mb-3 block text-sm font-black text-[#3b1f18]">
-                {t("time")}
-              </label>
+          <div className="rounded-3xl border border-[#e0d3bf] bg-white p-6 shadow-xl shadow-[#3b1f18]/10">
+            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-[#b09876]">
+              Step 02 / Time
+            </p>
 
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                {timeSlots.map((slot) => (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={() => setTime(slot)}
-                    className={`rounded-xl border px-3 py-3 text-sm font-black transition ${
-                      time === slot
-                        ? "border-[#3b1f18] bg-[#3b1f18] text-white"
-                        : "border-[#d8c9ac] bg-[#fffaf3] text-[#3b1f18] hover:border-[#c9a45c]"
-                    }`}
-                  >
-                    {slot}
-                  </button>
-                ))}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="mt-2 font-display text-3xl font-black text-[#3b1f18]">
+                  Pick a time
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-[#7b6255]">
+                  Choose a clear reservation slot. Available times are grouped
+                  by day period.
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-[#3b1f18] px-5 py-4 text-right text-white">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#d7b875]">
+                  Selected
+                </p>
+                <p className="mt-1 font-display text-3xl font-black">
+                  {time || "—"}
+                </p>
               </div>
             </div>
 
-            <div className="rounded-2xl bg-[#fffaf3] p-4">
-              <div className="flex justify-between text-sm">
-                <span>{t("guests")}</span>
-                <strong>{partySize}</strong>
+            <div className="mt-6 space-y-5">
+              {timeGroups.map((group) => (
+                <div
+                  key={group.title}
+                  className="rounded-3xl border border-[#eadfce] bg-[#fffaf3] p-4"
+                >
+                  <div className="mb-4 flex items-center justify-between gap-4">
+                    <div>
+                      <h3 className="font-display text-xl font-black text-[#3b1f18]">
+                        {group.title}
+                      </h3>
+                      <p className="mt-1 text-xs font-bold text-[#9c806b]">
+                        {group.subtitle}
+                      </p>
+                    </div>
+
+                    {group.slots.includes(time) && (
+                      <span className="rounded-full bg-[#3b1f18] px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#d7b875]">
+                        Selected
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                    {group.slots.map((slot) => (
+                      <button
+                        key={slot}
+                        type="button"
+                        onClick={() => setTime(slot)}
+                        className={`rounded-2xl border px-3 py-3 text-sm font-black transition ${
+                          time === slot
+                            ? "border-[#3b1f18] bg-[#3b1f18] text-white shadow-lg"
+                            : "border-[#d8c9ac] bg-white text-[#3b1f18] hover:border-[#c9a45c] hover:bg-[#f8f2e8]"
+                        }`}
+                      >
+                        {slot}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-[#e0d3bf] bg-white p-6 shadow-xl shadow-[#3b1f18]/10">
+            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-[#b09876]">
+              Step 03 / Table
+            </p>
+
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="mt-2 font-display text-3xl font-black text-[#3b1f18]">
+                  Select your table
+                </h2>
+
+                <p className="mt-2 text-sm leading-6 text-[#7b6255]">
+                  Choose your preferred table from the floor plan. Final
+                  placement may be adjusted by the restaurant if needed.
+                </p>
               </div>
 
-              <div className="mt-2 flex justify-between text-sm">
-                <span>{t("estimatedTables")}</span>
-                <strong>{tablesNeeded}</strong>
+              <div className="rounded-2xl bg-[#fffaf3] px-4 py-3 text-right">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#b09876]">
+                  Selected
+                </p>
+                <p className="mt-1 font-display text-2xl font-black text-[#3b1f18]">
+                  {selectedTable ? selectedTable.label : "None"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-[2rem] border border-[#d8c9ac] bg-[#fffaf3] p-4 shadow-inner">
+              <div className="relative mx-auto aspect-[1.28/1] w-full max-w-4xl overflow-hidden bg-[#fffaf3]">
+                <svg
+                  viewBox="0 0 1000 780"
+                  className="absolute inset-0 h-full w-full"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                >
+                  {/* Main outer wall */}
+                  <path
+                    d="M70 55 H930 Q965 55 965 90 V690 H260 V595 H70 V145 H190 V55 H70 Z"
+                    fill="none"
+                    stroke="#0f3d2e"
+                    strokeWidth="8"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+
+                  {/* Entrance wall */}
+                  <path
+                    d="M70 145 H190 V55"
+                    fill="none"
+                    stroke="#0f3d2e"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                  />
+
+                  {/* Entrance door swing */}
+                  <path
+                    d="M190 55 V145 Q250 135 250 55"
+                    fill="none"
+                    stroke="#0f3d2e"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                  />
+
+                  {/* Bottom restaurant strip */}
+                  <path
+                    d="M260 690 H965 V745 H260 Z"
+                    fill="none"
+                    stroke="#0f3d2e"
+                    strokeWidth="6"
+                    strokeLinejoin="round"
+                  />
+
+                  {/* Top dotted divider */}
+                  <path
+                    d="M360 250 H930"
+                    fill="none"
+                    stroke="#0f3d2e"
+                    strokeWidth="4"
+                    strokeDasharray="8 14"
+                    strokeLinecap="round"
+                  />
+
+                  {/* Counter / stairs */}
+                  <rect
+                    x="245"
+                    y="285"
+                    width="160"
+                    height="28"
+                    fill="#fffaf3"
+                    stroke="#0f3d2e"
+                    strokeWidth="4"
+                  />
+                  <rect
+                    x="255"
+                    y="312"
+                    width="160"
+                    height="28"
+                    fill="#fffaf3"
+                    stroke="#0f3d2e"
+                    strokeWidth="4"
+                  />
+
+                  {/* Down arrow */}
+                  <path
+                    d="M330 385 V330"
+                    fill="none"
+                    stroke="#0f3d2e"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M310 365 L330 392 L350 365"
+                    fill="none"
+                    stroke="#0f3d2e"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+
+                  {/* Dotted walking path from counter */}
+                  {/* Dotted path beside T12, not touching it */}
+                  {/* Lower path toward brand area */}
+                  {/* Center/right curved dotted path beside T8 */}
+                  {/* Straight dotted vertical path beside T8/T10 */}
+                  {/* Brand text */}
+                  <text
+                    x="612"
+                    y="727"
+                    textAnchor="middle"
+                    fill="#0f3d2e"
+                    fontSize="24"
+                    fontWeight="900"
+                    letterSpacing="14"
+                  >
+                    SINET COUNTER
+                  </text>
+
+                  {/* Entrance label */}
+                  <text
+                    x="130"
+                    y="105"
+                    textAnchor="middle"
+                    fill="#0f3d2e"
+                    fontSize="16"
+                    fontWeight="900"
+                    letterSpacing="8"
+                  >
+                    ENTRANCE
+                  </text>
+                </svg>
+
+                {tableOptions.map((table) => {
+                  const selected = preferredTable === String(table.id);
+                  const goodForParty = table.capacity >= partySize;
+
+                  return (
+                    <button
+                      key={table.id}
+                      type="button"
+                      onClick={() => setPreferredTable(String(table.id))}
+                      style={{
+                        left: `${table.x}%`,
+                        top: `${table.y}%`,
+                        width: `${table.w}%`,
+                        height: `${table.h}%`,
+                      }}
+                      className={`absolute z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center border-[3px] text-center transition ${getTableShapeClass(
+                        table.shape
+                      )} ${
+                        selected
+                          ? "border-[#3b1f18] bg-[#3b1f18] text-[#d7b875] shadow-2xl shadow-[#3b1f18]/25"
+                          : goodForParty
+                          ? "border-[#0f3d2e] bg-[#fffaf3] text-[#0f3d2e] hover:bg-[#efe2cc]"
+                          : "border-[#9c806b] bg-[#eadfce] text-[#7b6255]"
+                      }`}
+                    >
+                      {renderChairs(table, selected)}
+
+                      <span className="flex flex-col items-center leading-none">
+                        <span className="font-display text-base font-black sm:text-2xl">
+                          {table.label}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
 
-              <div className="mt-2 flex justify-between text-sm">
-                <span>{t("selectedTime")}</span>
-                <strong>{time || t("notSelected")}</strong>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl bg-white px-4 py-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#b09876]">
+                    Selected table
+                  </p>
+                  <p className="mt-1 font-black text-[#3b1f18]">
+                    {selectedTable
+                      ? `${selectedTable.label} · ${selectedTable.zone}`
+                      : "No preference"}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-white px-4 py-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#b09876]">
+                    Guests
+                  </p>
+                  <p className="mt-1 font-black text-[#3b1f18]">
+                    {partySize} guest{partySize === 1 ? "" : "s"}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-white px-4 py-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#b09876]">
+                    Capacity note
+                  </p>
+                  <p className="mt-1 font-black text-[#3b1f18]">
+                    {selectedTable
+                      ? selectedTable.capacity >= partySize
+                        ? "Suitable"
+                        : "May need adjustment"
+                      : "Optional"}
+                  </p>
+                </div>
               </div>
 
-              <div className="mt-2 flex justify-between text-sm">
-                <span>{t("reservedItems")}</span>
-                <strong>{selectedItems.length}</strong>
-              </div>
-
-              <div className="mt-2 flex justify-between border-t border-[#eadfce] pt-3 text-sm">
-                <span>{t("itemsTotal")}</span>
-                <strong>€{selectedItemsTotal.toFixed(2)}</strong>
-              </div>
+              <button
+                type="button"
+                onClick={() => setPreferredTable("")}
+                className="mt-4 text-xs font-black text-[#7b6255] underline underline-offset-4"
+              >
+                No table preference
+              </button>
             </div>
           </div>
         </aside>
 
         <section className="rounded-3xl border border-[#e0d3bf] bg-white p-6 shadow-xl shadow-[#3b1f18]/10">
           <p className="text-[10px] font-black uppercase tracking-[0.35em] text-[#b09876]">
-            {t("customerInformation")}
+            Step 04 / Details
           </p>
 
           <h2 className="mt-2 font-display text-3xl font-black text-[#3b1f18]">
-            {t("requestTable")}
+            Complete reservation
           </h2>
+
+          <div className="mt-6 rounded-3xl border border-[#eadfce] bg-[#fffaf3] p-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#b09876]">
+              Live summary
+            </p>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-white p-4">
+                <span className="text-xs font-bold text-[#7b6255]">Date</span>
+                <p className="mt-1 font-black text-[#3b1f18]">
+                  {formatDisplayDate(date)}
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-white p-4">
+                <span className="text-xs font-bold text-[#7b6255]">Time</span>
+                <p className="mt-1 font-black text-[#3b1f18]">
+                  {time || t("notSelected")}
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-white p-4">
+                <span className="text-xs font-bold text-[#7b6255]">Guests</span>
+                <p className="mt-1 font-black text-[#3b1f18]">
+                  {partySize} guest{partySize === 1 ? "" : "s"}
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-white p-4">
+                <span className="text-xs font-bold text-[#7b6255]">Table</span>
+                <p className="mt-1 font-black text-[#3b1f18]">
+                  {selectedTable
+                    ? `${selectedTable.label} · ${selectedTable.zone}`
+                    : "No preference"}
+                </p>
+              </div>
+            </div>
+          </div>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-5">
             <div className="grid gap-4 md:grid-cols-2">
@@ -573,18 +940,12 @@ export default function ReservationPage() {
                 className="rounded-2xl border border-[#d8c9ac] bg-[#fffaf3] px-4 py-3 text-sm outline-none focus:border-[#c9a45c]"
               />
 
-              <select
-                value={preferredTable}
-                onChange={(event) => setPreferredTable(event.target.value)}
-                className="rounded-2xl border border-[#d8c9ac] bg-[#fffaf3] px-4 py-3 text-sm outline-none focus:border-[#c9a45c]"
-              >
-                <option value="">{t("preferredTableOptional")}</option>
-                <option value="1">{t("table")} 1</option>
-                <option value="2">{t("table")} 2</option>
-                <option value="3">{t("table")} 3</option>
-                <option value="4">{t("table")} 4</option>
-                <option value="5">{t("table")} 5</option>
-              </select>
+              <div className="rounded-2xl border border-[#d8c9ac] bg-[#fffaf3] px-4 py-3 text-sm text-[#3b1f18]">
+                <span className="text-xs font-bold text-[#7b6255]">
+                  Estimated tables
+                </span>
+                <p className="mt-1 font-black">{tablesNeeded}</p>
+              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -677,7 +1038,7 @@ export default function ReservationPage() {
                 <div className="mt-4 space-y-2">
                   {selectedItems.map((item) => (
                     <div
-                      key={item.id}
+                      key={item.reservationKey}
                       className="flex justify-between gap-3 rounded-xl bg-white px-3 py-2 text-sm"
                     >
                       <div className="min-w-0">
