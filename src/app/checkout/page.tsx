@@ -656,7 +656,7 @@ if (extraInput) {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <input name="customerName" type="text" required placeholder={t("checkoutPhonePlaceholder")} className="w-full rounded-2xl border border-[#d8c9ac] bg-[#fffaf3] px-4 py-3 text-sm outline-none focus:border-[#c9a45c]" />
+            <input name="customerName" type="text" required placeholder={t("checkoutNamePlaceholder")} className="w-full rounded-2xl border border-[#d8c9ac] bg-[#fffaf3] px-4 py-3 text-sm outline-none focus:border-[#c9a45c]" />
             <input name="customerPhone" type="tel" required placeholder="Phone" className="w-full rounded-2xl border border-[#d8c9ac] bg-[#fffaf3] px-4 py-3 text-sm outline-none focus:border-[#c9a45c]" />
             <input name="customerEmail" type="email" required placeholder={t("checkoutEmailPlaceholder")} className="w-full rounded-2xl border border-[#d8c9ac] bg-[#fffaf3] px-4 py-3 text-sm outline-none focus:border-[#c9a45c]" />
 
