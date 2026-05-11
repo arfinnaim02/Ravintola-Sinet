@@ -373,7 +373,7 @@ if (extraInput) {
     });
 
     try {
-      const response = await fetch("/api/send-orders", {
+      const response = await fetch("/api/send-order", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -405,6 +405,22 @@ if (extraInput) {
           })),
         }),
       });
+
+      const contentType = response.headers.get("content-type") || "";
+
+      if (!contentType.includes("application/json")) {
+        const text = await response.text();
+
+        console.error("Order API returned non-JSON:", {
+          status: response.status,
+          contentType,
+          preview: text.slice(0, 500),
+        });
+
+        throw new Error(
+          `Order API returned non-JSON response. Status: ${response.status}`
+        );
+      }
 
       const data = await response.json();
 
