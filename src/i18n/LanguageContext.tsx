@@ -6,9 +6,9 @@ import { fi } from "./dictionaries/fi";
 
 type Lang = "en" | "fi";
 
-const dictionaries = {
+const dictionaries: Record<Lang, typeof en> = {
   en,
-  fi,
+  fi: fi as typeof en,
 };
 
 type DictionaryKey = keyof typeof en;
