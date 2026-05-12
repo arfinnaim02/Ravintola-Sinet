@@ -46,6 +46,17 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!userWithPassword.passwordHash) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "This account uses Google login. Please continue with Google.",
+        },
+        { status: 401 }
+      );
+    }
+
     const validPassword = await bcrypt.compare(
       password,
       userWithPassword.passwordHash

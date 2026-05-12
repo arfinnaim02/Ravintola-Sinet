@@ -14,6 +14,12 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  function handleGoogleLogin() {
+  window.location.href = `/api/auth/google/start?next=${encodeURIComponent(
+    next
+  )}`;
+}
+
   async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -62,6 +68,24 @@ router.refresh();
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5 p-6">
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            className="flex w-full items-center justify-center gap-3 rounded-2xl border border-[#d8c9ac] bg-white px-4 py-3 text-sm font-black text-[#3b1f18] shadow-sm transition hover:border-[#c9a45c] hover:bg-[#fffaf3]"
+          >
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-lg">
+              G
+            </span>
+            Continue with Google
+          </button>
+
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-[#eadfce]" />
+            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-[#9c806b]">
+              or
+            </span>
+            <div className="h-px flex-1 bg-[#eadfce]" />
+          </div>
           <input
             name="email"
             type="email"

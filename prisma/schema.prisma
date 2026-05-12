@@ -358,15 +358,21 @@ model DeliveryPricing {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  phone        String   @default("")
-  passwordHash String
-  role         String   @default("customer")
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  phone         String   @default("")
+
+  passwordHash  String?   // nullable for Google users
+  googleId      String?   @unique
+  image         String?   // Google profile photo
+  authProvider  String    @default("email")
+
+  role          String    @default("customer")
+  isActive      Boolean   @default(true)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   addresses      CustomerAddress[]
   orders         DeliveryOrder[]
