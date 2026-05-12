@@ -207,6 +207,13 @@ if (extraInput) {
       setCouponMessage(
         `${t("checkoutClaimedCouponApplied")}: -€${Number(data.coupon.discount).toFixed(2)}`
       );
+
+      pushDataLayer("coupon_apply", {
+        ecommerce: {
+          coupon: data.coupon.code || couponCode,
+          discount: Number(data.coupon.discount || data.discount || 0),
+        },
+      });
     } catch (error: any) {
       setCouponMessage(error?.message || "Failed to apply coupon.");
     } finally {
@@ -243,6 +250,12 @@ if (extraInput) {
     setCouponMessage(
       `Claimed coupon applied: -€${Number(data.coupon.discount).toFixed(2)}`
     );
+    pushDataLayer("coupon_apply", {
+      ecommerce: {
+        coupon: data.coupon.code || code,
+        discount: Number(data.coupon.discount || data.discount || 0),
+      },
+    });
   } catch (error: any) {
     setCouponMessage(error?.message || t("checkoutClaimedCouponFailed"));
   } finally {

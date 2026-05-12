@@ -5,7 +5,7 @@ import ReservationItemPreviewModal, {
   ReservationSelectedItem,
 } from "../../components/ReservationItemPreviewModal";
 import { useLanguage } from "../../i18n/LanguageContext";
-
+import { pushDataLayer } from "../../lib/gtm";
 type CategoryFromApi = {
   id: string;
   name: string;
@@ -255,6 +255,16 @@ export default function ReservationPage() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    pushDataLayer("reservation_start", {
+      reservation: {
+        date,
+        time,
+        party_size: partySize,
+        selected_items: selectedItems.length,
+        estimated_value: Number(selectedItemsTotal || 0),
+      },
+    });
+
     if (!time) {
       setStatus(t("reservationSelectTimeError"));
       return;
@@ -301,6 +311,24 @@ export default function ReservationPage() {
 
       setStatus(t("reservationSuccess"));
       setReservationId(data.reservation.id);
+
+      pushDataLayer("reservation_complete", {
+        reservation: {
+          reservation_id: data.reservation.id,
+          date,
+          time,
+          party_size: partySize,
+          selected_table: preferredTable || "",
+          value: Number(selectedItemsTotal || 0),
+          items: selectedItems.map((item) => ({
+            item_id: item.id,
+            item_name: item.name,
+            quantity: Number(item.qty || 1),
+            price: Number(item.unitPrice || 0),
+          })),
+        },
+      });
+
       form.reset();
       setTime("");
       setPartySize(2);
