@@ -31,8 +31,15 @@ async function getAuth() {
   return await import("../../../../../lib/auth");
 }
 
+/**
+ * FIXED:
+ * Hard-lock base URL to prevent:
+ * - wrong domain redirects
+ * - env inconsistency
+ * - cached PM2 env issues
+ */
 function getBaseUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  return "https://new.ravintolasinet-joensuu.fi";
 }
 
 function getRedirectUri() {
