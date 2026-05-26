@@ -128,10 +128,11 @@ model ReservationItem {
   addonsTotal Decimal @default(0)
 
   reservationId String
-  menuItemId    String
+
+  menuItemId String?
+  menuItem   MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
 
   reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
-  menuItem    MenuItem    @relation(fields: [menuItemId], references: [id], onDelete: Restrict)
 
   addonSnapshots ReservationItemAddon[]
 
