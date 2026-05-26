@@ -178,11 +178,25 @@ export async function DELETE(request: Request) {
       );
     }
 
+    // STEP 1: detach reservation items
+    await prisma.reservationItem.updateMany({
+      where: { menuItemId: id },
+      data: { menuItemId: null },
+    });
+
+    // STEP 2: detach delivery items
+    await prisma.deliveryOrderItem.updateMany({
+      where: { menuItemId: id },
+      data: { menuItemId: null },
+    });
+
+    // STEP 3: delete menu item safely
     await prisma.menuItem.delete({
       where: { id },
     });
 
     return NextResponse.json({ success: true });
+
   } catch (error: any) {
     return NextResponse.json(
       {
